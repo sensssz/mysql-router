@@ -89,7 +89,8 @@ MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
                            unsigned long long max_connect_errors,
                            unsigned int client_connect_timeout,
                            unsigned int net_buffer_length,
-                           SocketOperationsBase *socket_operations)
+                           SocketOperationsBase *socket_operations,
+                           SocketOperationsBase *rdma_operations)
     : name(route_name),
       mode_(mode),
       max_connections_(set_max_connections(max_connections)),
@@ -105,6 +106,7 @@ MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
       info_active_routes_(0),
       info_handled_routes_(0),
       socket_operations_(socket_operations),
+      rdma_operations_(rdma_operations),
       protocol_(Protocol::create(protocol, socket_operations)) {
 
   assert(socket_operations_ != nullptr);
@@ -633,9 +635,9 @@ void MySQLRouting::set_destinations_from_csv(const string &csv) {
 
 
   if (AccessMode::kReadOnly == mode_) {
-    destination_.reset(new RouteDestination(protocol_->get_type(), socket_operations_));
+    destination_.reset(new RouteDestination(protocol_->get_type(), rdma_operations_));
   } else if (AccessMode::kReadWrite == mode_) {
-    destination_.reset(new DestFirstAvailable(protocol_->get_type(), socket_operations_));
+    destination_.reset(new DestFirstAvailable(protocol_->get_type(), rdma_operations_));
   } else {
     throw std::runtime_error("Unknown mode");
   }

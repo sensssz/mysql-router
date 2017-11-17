@@ -132,7 +132,8 @@ public:
                unsigned long long max_connect_errors = routing::kDefaultMaxConnectErrors,
                unsigned int connect_timeout = routing::kDefaultClientConnectTimeout,
                unsigned int net_buffer_length = routing::kDefaultNetBufferLength,
-               routing::SocketOperationsBase *socket_operations = routing::SocketOperations::instance());
+               routing::SocketOperationsBase *socket_operations = routing::SocketOperations::instance(),
+               routing::SocketOperationsBase *rdma_operations = routing::RdmaOperations::instance());
 
   /** @brief Starts the service and accept incoming connections
    *
@@ -331,6 +332,8 @@ private:
   std::thread thread_acceptor_;
   /** @brief object handling the operations on network sockets */
   routing::SocketOperationsBase* socket_operations_;
+  /** @brief object handling the operations on network sockets */
+  routing::SocketOperationsBase* rdma_operations_;
   /** @brief object to handle protocol specific stuff */
   std::unique_ptr<BaseProtocol> protocol_;
 

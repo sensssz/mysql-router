@@ -18,11 +18,13 @@
 #ifndef MYSQLROUTER_ROUTING_INCLUDED
 #define MYSQLROUTER_ROUTING_INCLUDED
 
+#include "rdma_client.h"
 #include "mysqlrouter/datatypes.h"
 #include "mysqlrouter/plugin_config.h"
 
 #include <map>
 #include <string>
+#include <unordered_map>
 
 #ifdef _WIN32
 typedef long ssize_t;
@@ -177,6 +179,45 @@ class SocketOperations : public SocketOperationsBase {
   SocketOperations(const SocketOperations&) = delete;
   SocketOperations operator=(const SocketOperations&) = delete;
   SocketOperations() = default;
+};
+
+/** @class RdmaOperations
+ * @brief This class provides a "real" (not mock) implementation
+ */
+class RdmaOperations : public RdmaOperationsBase {
+ public:
+
+  static RdmaOperations* instance();
+
+  /** @brief Returns socket descriptor of connected MySQL server
+   *
+   * Returns a socket descriptor for the connection to the MySQL Server or
+   * -1 when an error occurred.
+   *
+   * @param addr information of the server we connect with
+   * @param connect_timeout number of seconds waiting for connection
+   * @param log whether to log errors or not
+   * @return a socket descriptor
+   */
+  int get_mysql_socket(mysqlrouter::TCPAddress addr, int connect_timeout, bool log = true) noexcept override;
+
+  /** @brief Thin wrapper around RDMA library write() */
+  ssize_t write(int fd, void *buffer, size_t nbyte) override;
+
+  /** @brief Thin wrapper around RDMA library read() */
+  ssize_t read(int fd, void *buffer, size_t nbyte) override;
+
+  /** @brief Thin wrapper around RDMA library close() */
+  void close(int fd)  override;
+
+  /** @brief Thin wrapper around RDMA library shutdown() */
+  void shutdown(int fd)  override;
+ private:
+  RdmaOperations(const RdmaOperations&) = delete;
+  RdmaOperations operator=(const RdmaOperations&) = delete;
+  RdmaOperations() = default;
+
+  std::unordered_map<int, RdmaClient*> rdma_fds_;
 };
 
 } // namespace routing

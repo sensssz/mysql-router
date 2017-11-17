@@ -286,4 +286,52 @@ void SocketOperations::shutdown(int fd) {
 #endif
 }
 
+RdmaOperations* RdmaOperations::instance() {
+  static RdmaOperations instance_;
+  return &instance_;
+}
+
+int RdmaOperations::get_mysql_socket(TCPAddress addr, int connect_timeout, bool log) noexcept {
+  RdmaClient *client = new RdmaClient(addr.str().c_str(), addr.port());
+  int fd = static_cast<int>(rdma_fds_.size());
+  rdma_fds_[fd] = client;
+  return fd;
+}
+
+ssize_t RdmaOperations::write(int fd, void *buffer, size_t nbyte) {
+#ifndef _WIN32
+  return ::write(fd, buffer, nbyte);
+#else
+  return rdma_fds_[fd]->SendToServer(buffer, nbyte);
+  // return ::send(fd, reinterpret_cast<const char *>(buffer), nbyte, 0);
+#endif
+}
+
+ssize_t RdmaOperations::read(int fd, void *buffer, size_t nbyte) {
+#ifndef _WIN32
+  return ::read(fd, buffer, nbyte);
+#else
+  return rdma_fds_[fd]->Read(buffer, nbytes);
+  // return ::recv(fd, reinterpret_cast<char *>(buffer), nbyte, 0);
+#endif
+}
+
+void RdmaOperations::close(int fd) {
+#ifndef _WIN32
+  ::close(fd);
+#else
+  rdma_fds_[fd]->Disconnect();
+  // ::closesocket(fd);
+#endif
+}
+
+void RdmaOperations::shutdown(int fd) {
+#ifndef _WIN32
+  ::shutdown(fd, SHUT_RDWR);
+#else
+  rdma_fds_[fd]->Disconnect();
+  // ::shutdown(fd, SD_BOTH);
+#endif
+}
+
 } // routing

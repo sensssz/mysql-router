@@ -24,6 +24,10 @@ set(ROUTING_SOURCE_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/dest_metadata_cache.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/dest_first_available.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/routing.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/rdma_communicator.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/rdma_client.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/spsc_ring_buffer.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/status.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/protocol/classic_protocol.cc
   ${ROUTING_SOURCE_FILES_X_PROTOCOL}
 )
@@ -66,12 +70,14 @@ if(CXX_HAVE_DEPRECATED_DECLARATIONS)
     COMPILE_FLAGS "-Wno-deprecated-declarations")
 endif()
 
+find_package(rdma REQUIRED)
+
 link_directories(${CMAKE_BINARY_DIR}/ext/protobuf/protobuf-3.0.0/cmake/)
 # The Plugin
 add_harness_plugin(routing
         SOURCES ${ROUTING_PLUGIN_SOURCE_FILES} ${ROUTING_SOURCE_FILES}
         REQUIRES logger mysql_protocol x_protocol metadata_cache)
-target_include_directories(routing PRIVATE ${include_dirs})
+target_include_directories(routing PRIVATE ${include_dirs} RDMA_INCLUDE_DIR)
 
 if(MSVC)
   add_compile_flags(${PROTO_SRCS} COMPILE_FLAGS "/wd4018")
@@ -82,7 +88,7 @@ else()
                     "-include mysqlrouter/xprotocol.h")
 endif(MSVC)
 
-target_link_libraries(routing PRIVATE ${PB_LIBRARY})
+target_link_libraries(routing PRIVATE ${PB_LIBRARY} RDMA_LIBRARIES IBVERBS_LIBRARY)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
   target_link_libraries(routing PRIVATE -lnsl PRIVATE -lsocket)

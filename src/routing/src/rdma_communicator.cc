@@ -123,7 +123,7 @@ Status RdmaCommunicator::PostSend(Context *context, size_t size) {
   wr.send_flags = send_flags;
 
   sge.addr = reinterpret_cast<uintptr_t>(context->send_region);
-  sge.length = size;
+  sge.length = static_cast<uint32_t>(size);
   sge.lkey = context->send_mr->lkey;
 
   while (!context->connected) {
@@ -143,7 +143,7 @@ Status RdmaCommunicator::InitContext(Context *context, struct rdma_cm_id *id) {
   ERROR_IF_ZERO(context->completion_queue =
     ibv_create_cq(context->device_context, 64, nullptr, context->completion_channel, 0));
   ERROR_IF_NON_ZERO(ibv_req_notify_cq(context->completion_queue, 0));
-  my_thread_create(&context->cq_poller_thread, NULL, RdmaCommunicator::PollCompletionQueue, context);
+  context->cq_poller_thread = std::thread(RdmaCommunicator::PollCompletionQueue, context);
 
   struct ibv_qp_init_attr queue_pair_attr;
   BuildQueuePairAttr(context, &queue_pair_attr);
@@ -158,17 +158,12 @@ Status RdmaCommunicator::InitContext(Context *context, struct rdma_cm_id *id) {
   return Status::Ok();
 }
 
-Status RdmaCommunicator::PostInitContext(Context *context) {
-  return Status::Ok();
-}
-
 StatusOr<Context> RdmaCommunicator::BuildContext(struct rdma_cm_id *id) {
   auto context = std::unique_ptr<Context>(new Context);
   auto status = InitContext(context.get(), id);
   if (!status.ok()) {
     return std::move(status);
   }
-  RETURN_IF_ERROR(PostInitContext(context.get()));
   return std::move(context);
 }
 
@@ -214,5 +209,5 @@ Status RdmaCommunicator::RegisterMemoryRegion(Context *context) {
 
 void RdmaCommunicator::DestroyConnection(void *context_void) {
   Context *context = reinterpret_cast<Context *>(context_void);
-  DestroyContext(context);
+  delete context;
 }

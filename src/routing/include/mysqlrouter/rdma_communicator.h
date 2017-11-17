@@ -66,7 +66,6 @@ protected:
   virtual Status OnDisconnect(struct rdma_cm_id *id);
   virtual void DestroyConnection(void *context);
   virtual Status InitContext(Context *context, struct rdma_cm_id *id);
-  virtual Status PostInitContext(Context *context);
   virtual StatusOr<Context> BuildContext(struct rdma_cm_id *id);
 
   Status OnEvent(struct rdma_cm_event *event);

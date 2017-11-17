@@ -1,5 +1,5 @@
-#include "rdma_communicator.h"
-#include "status.h"
+#include "mysqlrouter/rdma_communicator.h"
+#include "mysqlrouter/status.h"
 
 #include <iostream>
 #include <sstream>

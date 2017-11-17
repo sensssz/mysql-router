@@ -43,9 +43,12 @@ ssize_t RdmaClient::SendToServer(void *buffer, size_t size) {
   // posted on the other side. Although we set rnr_retry_count to
   // infinity, if this happens a lot, there will be a huge performance
   // degradation. Therefore, we pre-post a receive before the send.
-  RETURN_IF_ERROR(PostReceive(context_));
+  auto s = PostReceive(context_);
+  if (!s.ok()) {
+    return -1;
+  }
   memcpy(context_->send_region, buffer, size);
-  auto s = PostSend(context_, size);
+  s = PostSend(context_, size);
   if (s.ok()) {
     return static_cast<ssize_t>(size);
   } else {

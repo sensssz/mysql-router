@@ -153,7 +153,6 @@ Status RdmaCommunicator::InitContext(Context *context, struct rdma_cm_id *id) {
   id->context = context;
 
   RETURN_IF_ERROR(RegisterMemoryRegion(context));
-  context->buffer = CreateSpscRingBuffer();
   context->queue_depth = kQueueDepth;
   context->unsignaled_sends = 0;
   return Status::Ok();

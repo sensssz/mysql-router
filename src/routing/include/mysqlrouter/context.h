@@ -13,6 +13,7 @@ public:
   virtual ~Context();
 
   struct rdma_cm_id *id;
+  struct rdma_event_channel *event_channel;
   struct ibv_qp *queue_pair;
   struct ibv_context *device_context;
   struct ibv_pd *protection_domain;
@@ -25,13 +26,13 @@ public:
   struct ibv_mr *recv_mr;
   char *send_region;
   struct ibv_mr *send_mr;
+
+  int queue_depth;
   std::atomic<int> unsignaled_sends;
 
   SpscRingBuffer buffer;
 
   std::thread cq_poller_thread;
-
-  bool log_latency;
 };
 
 #endif // RDMA_CONTEXT_H_

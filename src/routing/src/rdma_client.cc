@@ -45,7 +45,7 @@ ssize_t RdmaClient::SendToServer(void *buffer, size_t size) {
   // degradation. Therefore, we pre-post a receive before the send.
   RETURN_IF_ERROR(PostReceive(context_));
   memcpy(context_->send_region, buffer, size);
-  auto s PostSend(context_, size);
+  auto s = PostSend(context_, size);
   if (s.ok()) {
     return static_cast<ssize_t>(size);
   } else {

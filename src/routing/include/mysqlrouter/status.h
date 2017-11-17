@@ -37,7 +37,7 @@ public:
   StatusOr(std::unique_ptr<T> obj) : obj_(std::move(obj)) {
       status_ = Status::Ok();
   }
-  StatusOr(const T &value) : StatusOr(std::make_unique<T>(value)) {}
+  StatusOr(const T &value) : StatusOr(std::unique_ptr<T>(new T(value))) {}
   StatusOr(Status status) : status_(status) {}
 
   T *operator->() {

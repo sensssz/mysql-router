@@ -164,7 +164,7 @@ Status RdmaCommunicator::PostInitContext(Context *context) {
 }
 
 StatusOr<Context> RdmaCommunicator::BuildContext(struct rdma_cm_id *id) {
-  auto context = make_unique<Context>();
+  auto context = std::unique_ptr<Context>(new Context);
   auto status = InitContext(context.get(), id);
   if (!status.ok()) {
     return std::move(status);

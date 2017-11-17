@@ -184,7 +184,7 @@ class SocketOperations : public SocketOperationsBase {
 /** @class RdmaOperations
  * @brief This class provides a "real" (not mock) implementation
  */
-class RdmaOperations : public RdmaOperationsBase {
+class RdmaOperations : public SocketOperationsBase {
  public:
 
   static RdmaOperations* instance();

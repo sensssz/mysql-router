@@ -26,7 +26,7 @@ class ClassicProtocol: public BaseProtocol {
 public:
   ClassicProtocol(SocketOperationsBase *socket_operations,
                   SocketOperationsBase *rdma_operations):
-    BaseProtocol(socket_operations, rdma_operations_) {}
+    BaseProtocol(socket_operations, rdma_operations) {}
 
   /** @brief Function that gets called when the client is being blocked
    *

@@ -259,40 +259,40 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   int pktnr = 0;
   while (true) {
     fd_set readfds;
-    fd_set errfds;
-    // Reset on each loop
-    FD_ZERO(&readfds);
-    FD_ZERO(&errfds);
-    FD_SET(client, &readfds);
-    FD_SET(server, &readfds);
+//     fd_set errfds;
+//     // Reset on each loop
+//     FD_ZERO(&readfds);
+//     FD_ZERO(&errfds);
+//     FD_SET(client, &readfds);
+//     FD_SET(server, &readfds);
 
-    if (handshake_done) {
-      res = select(nfds, &readfds, nullptr, &errfds, nullptr);
-    } else {
-      // Handshake reply timeout
-      struct timeval timeout_val;
-      timeout_val.tv_sec = client_connect_timeout_;
-      timeout_val.tv_usec = 0;
-      res = select(nfds, &readfds, nullptr, &errfds, &timeout_val);
-    }
+//     if (handshake_done) {
+//       res = select(nfds, &readfds, nullptr, &errfds, nullptr);
+//     } else {
+//       // Handshake reply timeout
+//       struct timeval timeout_val;
+//       timeout_val.tv_sec = client_connect_timeout_;
+//       timeout_val.tv_usec = 0;
+//       res = select(nfds, &readfds, nullptr, &errfds, &timeout_val);
+//     }
 
-    if (res <= 0) {
-      if (res == 0) {
-        extra_msg = string("Select timed out");
-      } else if (errno > 0) {
-        if (errno == EINTR || errno == EAGAIN)
-          continue;
-        extra_msg = string("Select failed with error: " + get_strerror(errno));
-#ifdef _WIN32
-      } else if (WSAGetLastError() > 0) {
-        extra_msg = string("Select failed with error: " + get_message_error(WSAGetLastError()));
-#endif
-      } else {
-        extra_msg = string("Select failed (" + to_string(res) + ")");
-      }
+//     if (res <= 0) {
+//       if (res == 0) {
+//         extra_msg = string("Select timed out");
+//       } else if (errno > 0) {
+//         if (errno == EINTR || errno == EAGAIN)
+//           continue;
+//         extra_msg = string("Select failed with error: " + get_strerror(errno));
+// #ifdef _WIN32
+//       } else if (WSAGetLastError() > 0) {
+//         extra_msg = string("Select failed with error: " + get_message_error(WSAGetLastError()));
+// #endif
+//       } else {
+//         extra_msg = string("Select failed (" + to_string(res) + ")");
+//       }
 
-      break;
-    }
+//       break;
+//     }
 
     // Handle traffic from Server to Client
     // Note: In classic protocol Server _always_ talks first

@@ -293,7 +293,7 @@ RdmaOperations* RdmaOperations::instance() {
 
 int RdmaOperations::get_mysql_socket(TCPAddress addr, int connect_timeout, bool log) noexcept {
   RdmaClient *client = new RdmaClient(addr.str().c_str(), addr.port);
-  int fd = static_cast<int>(rdma_fds_.size());
+  int fd = static_cast<int>(rdma_fds_.size()) + 1;
   rdma_fds_[fd] = client;
   return fd;
 }
@@ -321,6 +321,8 @@ void RdmaOperations::close(int fd) {
   ::close(fd);
 #else
   rdma_fds_[fd]->Disconnect();
+  delete rdma_fds_[fd];
+  rdma_fds_[fd] = nullptr;
   // ::closesocket(fd);
 #endif
 }
@@ -330,6 +332,8 @@ void RdmaOperations::shutdown(int fd) {
   ::shutdown(fd, SHUT_RDWR);
 #else
   rdma_fds_[fd]->Disconnect();
+  delete rdma_fds_[fd];
+  rdma_fds_[fd] = nullptr;
   // ::shutdown(fd, SD_BOTH);
 #endif
 }

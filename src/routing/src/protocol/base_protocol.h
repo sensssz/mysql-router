@@ -48,7 +48,8 @@ public:
   };
 
   BaseProtocol(SocketOperationsBase *socket_operations,
-               SocketOperationsBase *rdma_operations): socket_operations_(socket_operations) {}
+               SocketOperationsBase *rdma_operations):
+    socket_operations_(socket_operations), rdma_operations_(rdma_operations) {}
   virtual ~BaseProtocol() {}
 
   /** @brief Function that gets called when the client is being blocked

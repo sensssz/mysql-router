@@ -47,7 +47,8 @@ public:
     kXProtocol
   };
 
-  BaseProtocol(SocketOperationsBase *socket_operations): socket_operations_(socket_operations) {}
+  BaseProtocol(SocketOperationsBase *socket_operations,
+               SocketOperationsBase *rdma_operations): socket_operations_(socket_operations) {}
   virtual ~BaseProtocol() {}
 
   /** @brief Function that gets called when the client is being blocked
@@ -106,6 +107,7 @@ public:
   virtual Type get_type() = 0;
 protected:
   SocketOperationsBase *socket_operations_;
+  SocketOperationsBase *rdma_operations_;
 };
 
 #endif // ROUTING_BASEPROTOCOL_INCLUDED

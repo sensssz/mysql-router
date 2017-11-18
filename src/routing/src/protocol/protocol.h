@@ -58,15 +58,16 @@ public:
    * @returns pointer to the created object
    */
   static BaseProtocol* create(Type type,
-                              SocketOperationsBase *socket_operations) {
+                              SocketOperationsBase *socket_operations,
+                              SocketOperationsBase *rdma_operations) {
     BaseProtocol* result{nullptr};
 
     switch (type ) {
     case Type::kClassicProtocol:
-      result =  new ClassicProtocol(socket_operations);
+      result =  new ClassicProtocol(socket_operations, rdma_operations);
       break;
     case Type::kXProtocol:
-      result =  new XProtocol(socket_operations);
+      result =  new XProtocol(socket_operations, rdma_operations);
       break;
     default:
       throw std::invalid_argument("Invalid protocol: " + std::to_string(static_cast<int>(type)));

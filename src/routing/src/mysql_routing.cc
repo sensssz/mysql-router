@@ -107,7 +107,7 @@ MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
       info_handled_routes_(0),
       socket_operations_(socket_operations),
       rdma_operations_(rdma_operations),
-      protocol_(Protocol::create(protocol, socket_operations)) {
+      protocol_(Protocol::create(protocol, socket_operations, rdma_operations)) {
 
   assert(socket_operations_ != nullptr);
 

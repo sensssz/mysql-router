@@ -91,6 +91,7 @@ Status RdmaClient::OnAddressResolved(struct rdma_cm_id *id) {
     return status_or.status();
   }
   context_ = status_or.Take();
+  RETURN_IF_ERROR(PostReceive(context_));
   ERROR_IF_NON_ZERO(rdma_resolve_route(id, kTimeoutInMs));
 
   return Status::Ok();
@@ -101,7 +102,7 @@ Status RdmaClient::OnRouteResolved(struct rdma_cm_id *id) {
   struct rdma_conn_param cm_params;
   BuildParams(&cm_params);
   ERROR_IF_NON_ZERO(rdma_connect(id, &cm_params));
-  return PostReceive(context_);
+  return Status::Ok();
 }
 
 Status RdmaClient::OnConnectRequest(struct rdma_cm_id *id) {

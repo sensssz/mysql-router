@@ -293,6 +293,10 @@ RdmaOperations* RdmaOperations::instance() {
 
 int RdmaOperations::get_mysql_socket(TCPAddress addr, int connect_timeout, bool log) noexcept {
   RdmaClient *client = new RdmaClient(addr.str().c_str(), addr.port);
+  auto s = client->Connect();
+  if (!s.ok()) {
+    return -1;
+  }
   int fd = static_cast<int>(rdma_fds_.size()) + 1;
   rdma_fds_[fd] = client;
   return fd;

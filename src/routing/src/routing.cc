@@ -309,7 +309,7 @@ ssize_t RdmaOperations::write(int fd, void *buffer, size_t nbyte) {
 
 ssize_t RdmaOperations::read(int fd, void *buffer, size_t nbyte) {
 #ifndef _WIN32
-  return rdma_fds_[fd]->Read(buffer, nbytes);
+  return rdma_fds_[fd]->Read(buffer, nbyte);
   // return ::read(fd, buffer, nbyte);
 #else
   return ::recv(fd, reinterpret_cast<char *>(buffer), nbyte, 0);

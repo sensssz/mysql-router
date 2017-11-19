@@ -328,9 +328,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
   // Either client or server terminated
   socket_operations_->shutdown(client);
-  socket_operations_->shutdown(server);
+  rdma_operations_->shutdown(server);
   socket_operations_->close(client);
-  socket_operations_->close(server);
+  rdma_operations_->close(server);
 
   --info_active_routes_;
 #ifndef _WIN32

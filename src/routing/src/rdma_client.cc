@@ -101,7 +101,7 @@ Status RdmaClient::OnRouteResolved(struct rdma_cm_id *id) {
   struct rdma_conn_param cm_params;
   BuildParams(&cm_params);
   ERROR_IF_NON_ZERO(rdma_connect(id, &cm_params));
-  return Status::Ok();
+  return PostReceive(context_);
 }
 
 Status RdmaClient::OnConnectRequest(struct rdma_cm_id *id) {

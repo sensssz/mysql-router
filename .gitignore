@@ -43,3 +43,7 @@ commit.txt
 *.diff
 local.cmake
 packages/rpm-*/*.spec
+
+src/routing/include/infiniband/
+src/routing/include/rdma/
+

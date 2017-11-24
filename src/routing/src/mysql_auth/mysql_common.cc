@@ -281,7 +281,7 @@ auth_state_t send_backend_auth(MySQLSession *session, int fd)
 
   // set the charset
   payload += 4;
-  *payload = session->charset;
+  *payload = static_cast<uint8_t>(session->charset);
 
   payload++;
 

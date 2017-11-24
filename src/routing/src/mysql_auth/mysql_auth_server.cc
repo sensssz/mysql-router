@@ -110,7 +110,7 @@ int AuthWithBackendServers(MySQLSession *session, int fd, uint8_t *buf, size_t b
     return 0;
   }
   if (buf != nullptr) {
-    return rdma_operation->read(fd, buf, buf_len);
+    return static_cast<int>(rdma_operation->read(fd, buf, buf_len));
   } else {
     auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
     return static_cast<int>(rdma_operation->read(fd, buffer.get(), kMySQLMaxPacketLen));

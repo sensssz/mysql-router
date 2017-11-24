@@ -6,7 +6,7 @@
 
 static std::unique_ptr<MySQLSession> MySQLHandshake(int fd) {
   uint8_t *outbuf = nullptr;
-  uint32_t mysql_payload_size = 0;
+  size_t mysql_payload_size = 0;
   uint8_t mysql_packet_header[4];
   uint8_t mysql_packet_id = 0;
   /* uint8_t mysql_filler = GW_MYSQL_HANDSHAKE_FILLER; not needed*/
@@ -29,8 +29,8 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(int fd) {
 
   auto session = std::unique_ptr<MySQLSession>(new MySQLSession);
 
-  version_string = MYSQL_VERSION;
-  len_version_string = strlen(MYSQL_VERSION);
+  version_string = MYSQL_VERSION.c_str();
+  len_version_string = MYSQL_VERSION.size();
 
   generate_random_str(server_scramble, kMySQLScrambleSize);
 
@@ -187,7 +187,7 @@ std::unique_ptr<MySQLSession> AuthenticateClient(int fd) {
   auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
   auto buf = buffer.get();
   auto socket_operation = routing::SocketOperations::instance();
-  int size = socket_operation->read(fd, buf, kMySQLMaxPacketLen);
+  ssize_t size = socket_operation->read(fd, buf, kMySQLMaxPacketLen);
   if (size <= 0) {
     return nullptr;
   }

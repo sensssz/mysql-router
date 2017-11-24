@@ -51,7 +51,7 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(int fd) {
    * an AuthSwitchRequest packet to the client.
    */
   const char* plugin_name = DEFAULT_MYSQL_AUTH_PLUGIN;
-  int plugin_name_len = strlen(plugin_name);
+  size_t plugin_name_len = strlen(plugin_name);
 
   mysql_payload_size =
       sizeof(mysql_protocol_version) + (len_version_string + 1) + sizeof(mysql_thread_id_num) + 8 +

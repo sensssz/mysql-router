@@ -1,6 +1,15 @@
 #include "mysql_auth_server.h"
 #include "logger.h"
 
+static char *gw_strend(register const char *s)
+{
+  while (*s++)
+  {
+    ;
+  }
+  return (char*) (s - 1);
+}
+
 /**
  * Decode mysql server handshake
  *
@@ -88,8 +97,8 @@ decode_mysql_server_handshake(MySQLSession *session, uint8_t *payload)
 
 int AuthWithBackendServers(MySQLSession *session, int fd, uint8_t *buf, size_t buf_len) {
   auto rdma_operation = routing::RdmaOperations::instance();
-  auto buf = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
-  auto buffer = buf.get();
+  auto unique_buf = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
+  auto buffer = unique_buf.get();
   int size = 0;
   if ((size = rdma_operation->read(fd, buffer, kMySQLMaxPacketLen)) < 0) {
     log_error("Failed to read auth packet from server");

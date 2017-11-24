@@ -1,7 +1,6 @@
 #include "mysql_common.h"
 
 static unsigned int x = 123456789, y = 987654321, z = 43219876, c = 6543217; /* Seed variables */
-static bool init = false;
 
 static unsigned int random_jkiss()
 {
@@ -107,7 +106,7 @@ void sha1_2_str(const uint8_t *in, int in_len, const uint8_t *in2, int in2_len, 
  */
 static int
 response_length(char *user, uint8_t *passwd, char *dbname, const char *auth_module) {
-  long bytes;
+  int bytes;
 
   // Protocol MySQL HandshakeResponse for CLIENT_PROTOCOL_41
   // 4 bytes capabilities + 4 bytes max packet size + 1 byte charset + 23 '\0' bytes

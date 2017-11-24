@@ -28,7 +28,7 @@ bool Sharder::Authenticate(int client_fd) {
       return false;
     }
   }
-  int size = routing::SocketOperations::instance()->send(client_fd, buf, server_size);
+  int size = routing::SocketOperations::instance()->write(client_fd, buf, server_size);
   if (size < 0) {
     DisconnectServers();
     return false;
@@ -72,8 +72,9 @@ int Sharder::Write(uint8_t *buffer, size_t size) {
 }
 
 void Sharder::DisconnectServers() {
+  auto rdma_operations = routing::RdmaOperations::instance();
   for (auto fd : server_fds_) {
-    socket_operations_->close(fd);
+    rdma_operations_->close(fd);
   }
   server_fds_.clear();
 }

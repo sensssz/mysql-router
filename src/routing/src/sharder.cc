@@ -45,7 +45,7 @@ int Sharder::Read(uint8_t *buffer, size_t size) {
       error = true;
     }
   }
-  int read_size = rdma_operations->read(server_fds_[0], buffer, size);
+  int read_size = static_cast<int>(rdma_operations->read(server_fds_[0], buffer, size));
   if (read_size < 0) {
     error = true;
   }

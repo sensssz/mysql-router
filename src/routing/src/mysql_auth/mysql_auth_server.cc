@@ -97,14 +97,14 @@ decode_mysql_server_handshake(MySQLSession *session, uint8_t *payload)
 
 int AuthWithBackendServers(MySQLSession *session, int fd, uint8_t *buf, size_t buf_len) {
   auto rdma_operation = routing::RdmaOperations::instance();
-  auto unique_buf = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
-  auto buffer = unique_buf.get();
+  auto auth_buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
+  auto auth_buf = auth_buffer.get();
   ssize_t size = 0;
-  if ((size = rdma_operation->read(fd, buffer, kMySQLMaxPacketLen)) < 0) {
+  if ((size = rdma_operation->read(fd, auth_buf, kMySQLMaxPacketLen)) < 0) {
     log_error("Failed to read auth packet from server");
     return -1;
   }
-  decode_mysql_server_handshake(session, buffer);
+  decode_mysql_server_handshake(session, auth_buf);
   strcpy(session->user, "root");
   if(send_backend_auth(session, fd) == AUTH_STATE_FAILED) {
     return 0;
@@ -113,6 +113,6 @@ int AuthWithBackendServers(MySQLSession *session, int fd, uint8_t *buf, size_t b
     return rdma_operation->read(fd, buf, buf_len);
   } else {
     auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
-    return rdma_operation->read(fd, buffer.get(), kMySQLMaxPacketLen);
+    return static_cast<int>(rdma_operation->read(fd, buffer.get(), kMySQLMaxPacketLen));
   }
 }

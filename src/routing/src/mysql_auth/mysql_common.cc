@@ -234,7 +234,7 @@ create_capabilities(MySQLSession *session, bool db_specified, bool compress)
  * @param dcb  Backend DCB
  * @return True on success, false on failure
  */
-auth_state_t send_backend_auth(std::shared_ptr<MySQLSession> session, int fd)
+auth_state_t send_backend_auth(MySQLSession *session, int fd)
 {
   uint8_t client_capabilities[4] = {0, 0, 0, 0};
   uint8_t *curr_passwd = session->password;
@@ -259,7 +259,7 @@ auth_state_t send_backend_auth(std::shared_ptr<MySQLSession> session, int fd)
   long bytes = response_length(session->user, curr_passwd,
                                session->db, auth_plugin_name);
 
-  auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t(bytes));
+  auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[bytes]);
   uint8_t *payload = buffer.get();
 
   // clearing data

@@ -1,8 +1,8 @@
 #include "sharder.h"
 
-class Sharder::Sharder(std::vector<int> &&server_fds) : server_fds_(std::move(server_fds)) {}
+Sharder::Sharder(std::vector<int> &&server_fds) : server_fds_(std::move(server_fds)) {}
 
-class Sharder::Sharder(const std::vector<int> &server_fds) : server_fds_(server_fds) {}
+Sharder::Sharder(const std::vector<int> &server_fds) : server_fds_(server_fds) {}
 
 Sharder::~Sharder() {
   DisconnectServers();
@@ -28,7 +28,7 @@ bool Sharder::Authenticate(int client_fd) {
       return false;
     }
   }
-  int size = routing::SocketOperations::instance()->write(client_fd, buf, server_size);
+  ssize_t size = routing::SocketOperations::instance()->write(client_fd, buf, server_size);
   if (size < 0) {
     DisconnectServers();
     return false;
@@ -41,11 +41,11 @@ int Sharder::Read(uint8_t *buffer, size_t size) {
   bool error = false;
   // We do a read on all servers, whether there's error or not
   for (auto it = server_fds_.begin() + 1; it != server_fds_.end(); it++) {
-    if (rdma_operations_->read(*it, buffer, size)) {
+    if (rdma_operations->read(*it, buffer, size)) {
       error = true;
     }
   }
-  int read_size = rdma_operations_->read(server_fds_[0], buffer, size);
+  int read_size = rdma_operations->read(server_fds_[0], buffer, size);
   if (read_size < 0) {
     error = true;
   }
@@ -60,7 +60,7 @@ int Sharder::Write(uint8_t *buffer, size_t size) {
   auto rdma_operations = routing::RdmaOperations::instance();
   bool error = false;
   for (auto fd : server_fds_) {
-    if (rdma_operations_->write(fd, buffer, size) < 0) {
+    if (rdma_operations->write(fd, buffer, size) < 0) {
       error = true;
     }
   }
@@ -74,7 +74,7 @@ int Sharder::Write(uint8_t *buffer, size_t size) {
 void Sharder::DisconnectServers() {
   auto rdma_operations = routing::RdmaOperations::instance();
   for (auto fd : server_fds_) {
-    rdma_operations_->close(fd);
+    rdma_operations->close(fd);
   }
   server_fds_.clear();
 }

@@ -1,7 +1,7 @@
 #include "mysql_auth_server.h"
 #include "logger.h"
 
-static char *gw_strend(register const char *s)
+static char *strend(register const char *s)
 {
   while (*s++)
   {
@@ -99,7 +99,7 @@ int AuthWithBackendServers(MySQLSession *session, int fd, uint8_t *buf, size_t b
   auto rdma_operation = routing::RdmaOperations::instance();
   auto unique_buf = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
   auto buffer = unique_buf.get();
-  int size = 0;
+  ssize_t size = 0;
   if ((size = rdma_operation->read(fd, buffer, kMySQLMaxPacketLen)) < 0) {
     log_error("Failed to read auth packet from server");
     return -1;

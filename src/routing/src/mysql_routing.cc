@@ -266,11 +266,11 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   ++info_active_routes_;
   ++info_handled_routes_;
 
-  nfds = std::max(client, server) + 1;
+  // nfds = std::max(client, server) + 1;
 
   int pktnr = 0;
   while (true) {
-    // fd_set readfds;
+//     fd_set readfds;
 //     fd_set errfds;
 //     // Reset on each loop
 //     FD_ZERO(&readfds);
@@ -319,7 +319,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
     if (bytes_read <= 0) {
       break;
     }
-    if (sharder->read(client, &buffer.front(), bytes_read) <= 0) {
+    if (socket_operations_->write(client, &buffer.front(), bytes_read) <= 0) {
       break;
     }
     bytes_down += bytes_read;

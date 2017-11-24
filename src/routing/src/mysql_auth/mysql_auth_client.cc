@@ -27,7 +27,7 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(int fd) {
   int len_version_string = 0;
   int id_num;
 
-  auto session = std::unique_ptr<MySQLSession>();
+  auto session = std::unique_ptr<MySQLSession>(new MySQLSession);
 
   version_string = MYSQL_VERSION;
   len_version_string = strlen(MYSQL_VERSION);

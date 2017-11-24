@@ -327,7 +327,7 @@ auth_state_t send_backend_auth(std::shared_ptr<MySQLSession> session, int fd)
  * @param buffer Buffer containing a complete MySQL packet
  * @return True if the buffer contains an OK packet
  */
-bool mxs_mysql_is_ok_packet(uint8_t *buffer)
+bool mysql_is_ok_packet(uint8_t *buffer)
 {
     bool rval = false;
     uint8_t cmd = buffer[kMySQLHeaderLen];
@@ -340,7 +340,7 @@ bool mxs_mysql_is_ok_packet(uint8_t *buffer)
     return rval;
 }
 
-bool mxs_mysql_is_result_set(uint8_t *buffer)
+bool mysql_is_result_set(uint8_t *buffer)
 {
     bool rval = false;
     uint8_t cmd = buffer[kMySQLHeaderLen];

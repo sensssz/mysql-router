@@ -83,7 +83,7 @@ link_directories(${CMAKE_BINARY_DIR}/ext/protobuf/protobuf-3.0.0/cmake/)
 add_harness_plugin(routing
         SOURCES ${ROUTING_PLUGIN_SOURCE_FILES} ${ROUTING_SOURCE_FILES}
         REQUIRES logger mysql_protocol x_protocol metadata_cache)
-target_include_directories(routing PRIVATE ${include_dirs} ${RDMA_INCLUDE_DIR} ssl)
+target_include_directories(routing PRIVATE ${include_dirs} ${RDMA_INCLUDE_DIR} ${OPENSSL_LIBRARIES})
 
 if(MSVC)
   add_compile_flags(${PROTO_SRCS} COMPILE_FLAGS "/wd4018")

@@ -23,14 +23,14 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(int fd) {
   uint8_t mysql_filler_ten[10] = {};
   /* uint8_t mysql_last_byte = 0x00; not needed */
   char server_scramble[kMySQLScrambleSize + 1] = "";
-  char *version_string;
-  int len_version_string = 0;
+  const char *version_string;
+  size_t len_version_string = 0;
   int id_num;
 
   auto session = std::unique_ptr<MySQLSession>(new MySQLSession);
 
-  version_string = MYSQL_VERSION.c_str();
-  len_version_string = MYSQL_VERSION.size();
+  version_string = MYSQL_VERSION;
+  len_version_string = strlen(MYSQL_VERSION);
 
   generate_random_str(server_scramble, kMySQLScrambleSize);
 

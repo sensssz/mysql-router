@@ -201,9 +201,9 @@ std::string MySQLRouting::make_thread_name(const std::string& config_name, const
 void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& client_addr) noexcept {
   mysql_harness::rename_thread(make_thread_name(name, "RtS").c_str());  // "Rt select() thread" would be too long :(
 
-  int nfds;
-  int res;
-  int error = 0;
+  // int nfds;
+  // int res;
+  // int error = 0;
   size_t bytes_down = 0;
   size_t bytes_up = 0;
   size_t bytes_read = 0;
@@ -213,7 +213,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   bool handshake_done = false;
 
   auto sharder = destination_->GetSharder();
-  if (sharder->get() == nullptr) {
+  if (sharder.get() == nullptr) {
     return;
   }
 
@@ -270,7 +270,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
   int pktnr = 0;
   while (true) {
-    fd_set readfds;
+    // fd_set readfds;
 //     fd_set errfds;
 //     // Reset on each loop
 //     FD_ZERO(&readfds);
@@ -310,12 +310,12 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
     if (bytes_read <= 0) {
       break;
     }
-    if (sharder->write(&buffer.front(), bytes_read) <= 0) {
+    if (sharder->Write(&buffer.front(), bytes_read) <= 0) {
       break;
     }
     bytes_up += bytes_read;
 
-    bytes_read = sharder->read(&buffer.front(), buffer_length);
+    bytes_read = sharder->Read(&buffer.front(), buffer_length);
     if (bytes_read <= 0) {
       break;
     }

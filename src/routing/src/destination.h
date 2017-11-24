@@ -24,6 +24,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -33,6 +34,7 @@
 #include "mysqlrouter/routing.h"
 #include "logger.h"
 #include "protocol/protocol.h"
+#include "sharder.h"
 
 /** @class RouteDestination
  * @brief Manage destinations for a Connection Routing
@@ -119,6 +121,8 @@ public:
    * @return a socket descriptor
    */
   virtual int get_server_socket(int connect_timeout, int *error) noexcept;
+
+  virtual std::unique_ptr<Sharder> GetSharder();
 
   /** @brief Gets the number of destinations
    *

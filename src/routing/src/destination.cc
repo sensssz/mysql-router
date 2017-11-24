@@ -158,6 +158,31 @@ int RouteDestination::get_server_socket(int connect_timeout, int *error) noexcep
   return -1; // no destination is available
 }
 
+std::unique_ptr<Sharder> RouteDestination::GetSharder() {
+  std::vector<int> server_fds;
+  bool error = false;
+
+  for (auto &addr : destinations_) {
+    int fd = socket_operations_->get_mysql_socket(addr, routing::kDefaultDestinationConnectionTimeout, true);
+    if (fd <= 0) {
+      log_error("Failed to connect to server when creating sharder");
+      error = true;
+      break;
+    }
+    server_fds.push_back(fd);
+  }
+
+  if (error) {
+    for (auto fd : server_fds) {
+      socket_operations_->close(fd);
+    }
+    server_fds.clear();
+    return nullptr;
+  }
+
+  return std::unique_ptr<Sharder>(new Sharder{std::move(server_fds)});
+}
+
 int RouteDestination::get_mysql_socket(const TCPAddress &addr, const int connect_timeout, const bool log_errors) {
   return socket_operations_->get_mysql_socket(addr, connect_timeout, log_errors);
 }

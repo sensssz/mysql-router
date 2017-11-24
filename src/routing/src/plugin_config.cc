@@ -50,7 +50,8 @@ RoutingPluginConfig::RoutingPluginConfig(const mysql_harness::ConfigSection *sec
       max_connections(get_uint_option<uint16_t>(section, "max_connections", 1)),
       max_connect_errors(get_uint_option<uint32_t>(section, "max_connect_errors", 1, UINT32_MAX)),
       client_connect_timeout(get_uint_option<uint32_t>(section, "client_connect_timeout", 2, 31536000)),
-      net_buffer_length(get_uint_option<uint32_t>(section, "net_buffer_length", 1024, 1048576)) {
+      net_buffer_length(get_uint_option<uint32_t>(section, "net_buffer_length", 1024, 1048576)
+      root_password_(get_option_string(section, "root_password"))) {
 
   // either bind_address or socket needs to be set, or both
   if (!bind_address.port && !named_socket.is_set()) {

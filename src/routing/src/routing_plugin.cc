@@ -183,6 +183,7 @@ static void start(const ConfigSection *section) {
     } catch (URIError) {
       r.set_destinations_from_csv(config.destinations);
     }
+    r.set_root_password(config.root_password);
     r.start();
   } catch (const std::invalid_argument &exc) {
     log_error(exc.what());

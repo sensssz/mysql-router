@@ -175,6 +175,8 @@ public:
 
   void set_destinations_from_uri(const mysqlrouter::URI &uri);
 
+  void set_root_password(const std::string &root_password);
+
   /** @brief Descriptive name of the connection routing */
   const std::string name;
 
@@ -336,6 +338,7 @@ private:
   routing::SocketOperationsBase* rdma_operations_;
   /** @brief object to handle protocol specific stuff */
   std::unique_ptr<BaseProtocol> protocol_;
+  std::string root_password_;
 
 #ifdef FRIEND_TEST
   FRIEND_TEST(RoutingTests, bug_24841281);

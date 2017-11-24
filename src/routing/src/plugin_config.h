@@ -78,6 +78,8 @@ public:
   const unsigned int client_connect_timeout;
   /** @brief Size of buffer to receive packets */
   const unsigned int net_buffer_length;
+  /** @brief root password */
+  const std::string root_password;
 
 protected:
 

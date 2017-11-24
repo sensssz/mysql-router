@@ -209,9 +209,21 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   size_t bytes_read = 0;
   string extra_msg = "";
   RoutingProtocolBuffer buffer(net_buffer_length_);
+  auto buffer_length = buffer.size();
   bool handshake_done = false;
 
-  int server = destination_->get_server_socket(destination_connect_timeout_, &error);
+  auto sharder = destination_->GetSharder();
+  if (sharder->get() == nullptr) {
+    return;
+  }
+
+  if (!sharder->Authenticate(client)) {
+    return;
+  }
+  handshake_done = true;
+
+  // int server = destination_->get_server_socket(destination_connect_timeout_, &error);
+  int server = sharder->GetDefaultShard();
 
   if (!(server > 0 && client > 0)) {
     std::stringstream os;
@@ -294,29 +306,47 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 //       break;
 //     }
 
-    // Handle traffic from Server to Client
-    // Note: In classic protocol Server _always_ talks first
-    if (protocol_->copy_packets(server, client,
-                                &readfds, buffer, &pktnr,
-                                handshake_done, &bytes_read, true) == -1) {
-#ifndef _WIN32
-      if (errno > 0) {
-#else
-      if (errno > 0 || WSAGetLastError() != 0) {
-#endif
-        extra_msg = string("Copy server-client failed: " + to_string(get_message_error(errno)));
-      }
+    bytes_read = socket_operations_->read(client, &buffer.front(), buffer_length);
+    if (bytes_read <= 0) {
+      break;
+    }
+    if (sharder->write(&buffer.front(), bytes_read) <= 0) {
       break;
     }
     bytes_up += bytes_read;
 
-    // Handle traffic from Client to Server
-    if (protocol_->copy_packets(client, server,
-                                &readfds, buffer, &pktnr,
-                                handshake_done, &bytes_read, false) == -1) {
+    bytes_read = sharder->read(&buffer.front(), buffer_length);
+    if (bytes_read <= 0) {
+      break;
+    }
+    if (sharder->read(client, &buffer.front(), bytes_read) <= 0) {
       break;
     }
     bytes_down += bytes_read;
+
+//     // Handle traffic from Server to Client
+//     // Note: In classic protocol Server _always_ talks first
+//     if (protocol_->copy_packets(server, client,
+//                                 &readfds, buffer, &pktnr,
+//                                 handshake_done, &bytes_read, true) == -1) {
+// #ifndef _WIN32
+//       if (errno > 0) {
+// #else
+//       if (errno > 0 || WSAGetLastError() != 0) {
+// #endif
+//         extra_msg = string("Copy server-client failed: " + to_string(get_message_error(errno)));
+//       }
+//       break;
+//     }
+//     bytes_up += bytes_read;
+
+//     // Handle traffic from Client to Server
+//     if (protocol_->copy_packets(client, server,
+//                                 &readfds, buffer, &pktnr,
+//                                 handshake_done, &bytes_read, false) == -1) {
+//       break;
+//     }
+//     bytes_down += bytes_read;
 
   } // while (true)
 
@@ -665,6 +695,10 @@ void MySQLRouting::set_destinations_from_csv(const string &csv) {
   if (destination_->size() == 0) {
     throw std::runtime_error("No destinations available");
   }
+}
+
+void MySQLRouting::set_root_password(const std::string &root_password) {
+  root_password_ = root_password;
 }
 
 int MySQLRouting::set_destination_connect_timeout(int seconds) {

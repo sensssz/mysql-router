@@ -25,6 +25,9 @@ bool Sharder::Authenticate(int client_fd) {
     DisconnectServers();
     return false;
   }
+  if (!mysql_is_ok_packet(buf)) {
+    log_error("Server response is not OK");
+  }
   for (auto it = server_fds_.begin() + 1; it != server_fds_.end(); it++) {
     int size = AuthWithBackendServers(session_.get(), *it, nullptr, 0);
     if (size < 0) {

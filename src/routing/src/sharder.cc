@@ -1,8 +1,10 @@
 #include "sharder.h"
 
-Sharder::Sharder(std::vector<int> &&server_fds) : server_fds_(std::move(server_fds)) {}
+Sharder::Sharder(std::vector<int> &&server_fds, const std::string &root_password) :
+    server_fds_(std::move(server_fds)), root_password_(root_password) {}
 
-Sharder::Sharder(const std::vector<int> &server_fds) : server_fds_(server_fds) {}
+Sharder::Sharder(const std::vector<int> &server_fds, const std::string &root_password) :
+    server_fds_(server_fds), root_password_(root_password) {}
 
 Sharder::~Sharder() {
   DisconnectServers();
@@ -14,6 +16,7 @@ int Sharder::GetShard(const std::string &column, int key) {
 
 bool Sharder::Authenticate(int client_fd) {
   session_ = std::move(AuthenticateClient(client_fd));
+  strcpy(session_->password, root_password_);
   auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
   auto buf = buffer.get();
   int server_size = AuthWithBackendServers(session_.get(), server_fds_[0], buf, kMySQLMaxPacketLen);

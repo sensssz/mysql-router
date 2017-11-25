@@ -183,12 +183,15 @@ static void store_client_information(MySQLSession *session, uint8_t *data, size_
 }
 
 std::unique_ptr<MySQLSession> AuthenticateClient(int fd) {
+  log_debug("Sending authenticate packet ");
   auto session = MySQLHandshake(fd);
   auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
   auto buf = buffer.get();
   auto socket_operation = routing::SocketOperations::instance();
+  log_debug("Reading client response");
   ssize_t size = socket_operation->read(fd, buf, kMySQLMaxPacketLen);
   if (size <= 0) {
+    log_error("Error receiving client response");
     return nullptr;
   }
   store_client_information(session.get(), buf, size);

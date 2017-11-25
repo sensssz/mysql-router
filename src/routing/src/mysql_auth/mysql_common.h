@@ -51,6 +51,7 @@
   ((uint64_t)(__buffer)[6] << 48) | \
   ((uint64_t)(__buffer)[7] << 56))
 
+const int kMySQLPasswordLen = 100;
 const int kMySQLScrambleSize = 20;
 const int kMySQLScrambleSize323 = 8;
 const int kMySQLHeaderLen = 4;
@@ -83,7 +84,7 @@ const int kMySQLReplyLocalInfile = 0xfb;
 
 struct MySQLSession {
   uint8_t scramble[kMySQLScrambleSize];           /*< server scramble, created or received */
-  uint8_t password[kMySQLScrambleSize];           /*< password */
+  uint8_t password[kMySQLPasswordLen];            /*< password */
   char user[kMySQLUserMaxLen + 1];                /*< username       */
   char db[kMySQLDatabaseMaxLen + 1];              /*< database       */
   int client_capabilities;                        /*< client capabilities */

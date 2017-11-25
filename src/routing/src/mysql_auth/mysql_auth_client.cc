@@ -165,6 +165,7 @@ static void store_client_information(MySQLSession *session, uint8_t *data, size_
 
   if (len > kMySQLAuthPacketBaseSize) {
     strcpy(session->user, (char*)data + kMySQLAuthPacketBaseSize);
+    log_debug("User is %s", session->user);
 
     if (session->client_capabilities & MYSQL_CAPABILITIES_CONNECT_WITH_DB) {
 

@@ -16,7 +16,7 @@ int Sharder::GetShard(const std::string &column, int key) {
 
 bool Sharder::Authenticate(int client_fd) {
   session_ = std::move(AuthenticateClient(client_fd));
-  strcpy(session_->password, root_password_);
+  strcpy(reinterpret_cast<char *>(session_->password), root_password_.c_str());
   auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
   auto buf = buffer.get();
   int server_size = AuthWithBackendServers(session_.get(), server_fds_[0], buf, kMySQLMaxPacketLen);

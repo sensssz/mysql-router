@@ -212,7 +212,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   auto buffer_length = buffer.size();
   bool handshake_done = false;
 
-  auto sharder = destination_->GetSharder();
+  auto sharder = destination_->GetSharder(root_password_);
   if (sharder.get() == nullptr) {
     return;
   }

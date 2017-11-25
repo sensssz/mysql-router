@@ -122,7 +122,7 @@ public:
    */
   virtual int get_server_socket(int connect_timeout, int *error) noexcept;
 
-  virtual std::unique_ptr<Sharder> GetSharder();
+  virtual std::unique_ptr<Sharder> GetSharder(const std::string &root_password);
 
   /** @brief Gets the number of destinations
    *

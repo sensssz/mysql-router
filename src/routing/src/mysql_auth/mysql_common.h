@@ -51,7 +51,6 @@
   ((uint64_t)(__buffer)[6] << 48) | \
   ((uint64_t)(__buffer)[7] << 56))
 
-const int kMySQLPasswordLen = 100;
 const int kMySQLScrambleSize = 20;
 const int kMySQLScrambleSize323 = 8;
 const int kMySQLHeaderLen = 4;

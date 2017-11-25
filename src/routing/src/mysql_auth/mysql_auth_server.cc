@@ -107,6 +107,7 @@ int AuthWithBackendServers(MySQLSession *session, int fd, uint8_t *buf, size_t b
   decode_mysql_server_handshake(session, auth_buf);
   strcpy(session->user, "root");
   if(send_backend_auth(session, fd) == AUTH_STATE_FAILED) {
+    log_error("Authentication returns failure");
     return 0;
   }
   if (buf != nullptr) {

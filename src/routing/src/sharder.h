@@ -19,12 +19,11 @@ public:
   bool Authenticate(int client_fd);
   int Read(uint8_t *buffer, size_t size);
   int Write(uint8_t *buffer, size_t size);
+  void DisconnectServers();
 
 private:
   std::vector<int> server_fds_;
   std::unique_ptr<MySQLSession> session_;
-
-  void DisconnectServers();
 };
 
 #endif // ROUTING_SRC_SHARDER_H_

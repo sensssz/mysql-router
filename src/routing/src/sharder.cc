@@ -18,18 +18,21 @@ bool Sharder::Authenticate(int client_fd) {
   auto buf = buffer.get();
   int server_size = AuthWithBackendServers(session_.get(), server_fds_[0], buf, kMySQLMaxPacketLen);
   if (server_size < 0) {
+    log_error("Authentication fails with negative read size");
     DisconnectServers();
     return false;
   }
   for (auto it = server_fds_.begin() + 1; it != server_fds_.end(); it++) {
     int size = AuthWithBackendServers(session_.get(), *it, nullptr, 0);
     if (size < 0) {
+      log_error("Authentication fails with negative read size");
       DisconnectServers();
       return false;
     }
   }
   ssize_t size = routing::SocketOperations::instance()->write(client_fd, buf, server_size);
   if (size < 0) {
+    log_error("Sending authentication result to client returns negative read size");
     DisconnectServers();
     return false;
   }

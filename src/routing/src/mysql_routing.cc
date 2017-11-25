@@ -308,18 +308,22 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
     bytes_read = socket_operations_->read(client, &buffer.front(), buffer_length);
     if (bytes_read <= 0) {
+      log_errors("Read from client fails");
       break;
     }
     if (sharder->Write(&buffer.front(), bytes_read) <= 0) {
+      log_errors("Write to servers fails");
       break;
     }
     bytes_up += bytes_read;
 
     bytes_read = sharder->Read(&buffer.front(), buffer_length);
     if (bytes_read <= 0) {
+      log_errors("Read from servers fail");
       break;
     }
     if (socket_operations_->write(client, &buffer.front(), bytes_read) <= 0) {
+      log_errors("Write to client fails");
       break;
     }
     bytes_down += bytes_read;
@@ -358,9 +362,10 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
   // Either client or server terminated
   socket_operations_->shutdown(client);
-  rdma_operations_->shutdown(server);
+  // rdma_operations_->shutdown(server);
   socket_operations_->close(client);
-  rdma_operations_->close(server);
+  // rdma_operations_->close(server);
+  sharder->DisconnectServers();
 
   --info_active_routes_;
 #ifndef _WIN32

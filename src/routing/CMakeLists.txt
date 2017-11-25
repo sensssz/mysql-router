@@ -94,7 +94,7 @@ else()
                     "-include mysqlrouter/xprotocol.h")
 endif(MSVC)
 
-target_link_libraries(routing PRIVATE ${PB_LIBRARY} ${RDMA_LIBRARIES} ${IBVERBS_LIBRARY})
+target_link_libraries(routing PRIVATE ${PB_LIBRARY} ${RDMA_LIBRARIES} ${IBVERBS_LIBRARY} ${OPENSSL_LIBRARIES})
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
   target_link_libraries(routing PRIVATE -lnsl PRIVATE -lsocket)

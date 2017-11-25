@@ -308,22 +308,22 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
     bytes_read = socket_operations_->read(client, &buffer.front(), buffer_length);
     if (bytes_read <= 0) {
-      log_errors("Read from client fails");
+      log_error("Read from client fails");
       break;
     }
     if (sharder->Write(&buffer.front(), bytes_read) <= 0) {
-      log_errors("Write to servers fails");
+      log_error("Write to servers fails");
       break;
     }
     bytes_up += bytes_read;
 
     bytes_read = sharder->Read(&buffer.front(), buffer_length);
     if (bytes_read <= 0) {
-      log_errors("Read from servers fail");
+      log_error("Read from servers fail");
       break;
     }
     if (socket_operations_->write(client, &buffer.front(), bytes_read) <= 0) {
-      log_errors("Write to client fails");
+      log_error("Write to client fails");
       break;
     }
     bytes_down += bytes_read;

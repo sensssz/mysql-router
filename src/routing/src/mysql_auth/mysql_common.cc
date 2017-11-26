@@ -158,7 +158,8 @@ static void calculate_hash(uint8_t *scramble, uint8_t *passwd, uint8_t *output)
   uint8_t new_sha[kMySQLScrambleSize] = "";
 
   // hash1 is the function input, SHA1(real_password)
-  memcpy(hash1, passwd, kMySQLScrambleSize);
+  sha1_str(passwd, strlen(passwd), hash1);
+  // memcpy(hash1, passwd, kMySQLScrambleSize);
 
   // hash2 is the SHA1(input data), where input_data = SHA1(real_password)
   sha1_str(hash1, kMySQLScrambleSize, hash2);

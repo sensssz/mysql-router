@@ -22,8 +22,8 @@ public:
   void DisconnectServers();
 
 private:
-  std::string root_password_;
   std::vector<int> server_fds_;
+  std::string root_password_;
   std::unique_ptr<MySQLSession> session_;
 };
 

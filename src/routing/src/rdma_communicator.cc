@@ -64,9 +64,7 @@ void RdmaCommunicator::OnWorkCompletion(Context *context, struct ibv_wc *wc) {
     if (size == kMaxPacketLen) {
       PostReceive(context);
     }
-    if (size < 50) {
-      ShowBinaryData(context->recv_region + sizeof(size_t), size);
-    }
+    ShowBinaryData(context->recv_region + sizeof(size_t), size);
     context->buffer.Write(context->recv_region + sizeof(size_t), size);
   }
 }

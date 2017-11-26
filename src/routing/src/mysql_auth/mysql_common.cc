@@ -1,5 +1,7 @@
 #include "mysql_common.h"
 
+#include <iostream>
+
 static unsigned int x = 123456789, y = 987654321, z = 43219876, c = 6543217; /* Seed variables */
 
 static unsigned int random_jkiss()
@@ -238,6 +240,8 @@ auth_state_t send_backend_auth(MySQLSession *session, int fd)
 {
   uint8_t client_capabilities[4] = {0, 0, 0, 0};
   uint8_t *curr_passwd = session->password;
+
+  std::cerr << "Logging in as " << session->user << " with password " << session->password << std::endl;
 
   /**
    * If session is stopping or has failed return with error.

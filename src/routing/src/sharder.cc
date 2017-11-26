@@ -19,7 +19,7 @@ int Sharder::GetShard(const std::string &column, int key) {
 bool Sharder::Authenticate(int client_fd) {
   session_ = std::move(AuthenticateClient(client_fd));
   unsigned char hash[SHA_DIGEST_LENGTH];
-  SHA1(root_password_, strlen(root_password_), hash);
+  SHA1(root_password_.c_str(), root_password_.length(), hash);
   strcpy(reinterpret_cast<char *>(session_->password), hash);
   auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
   auto buf = buffer.get();

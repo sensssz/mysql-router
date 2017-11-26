@@ -1,5 +1,7 @@
 #include "sharder.h"
 
+#include <openssl/sha.h>
+
 Sharder::Sharder(std::vector<int> &&server_fds, const std::string &root_password) :
     server_fds_(std::move(server_fds)), root_password_(root_password) {}
 
@@ -16,7 +18,9 @@ int Sharder::GetShard(const std::string &column, int key) {
 
 bool Sharder::Authenticate(int client_fd) {
   session_ = std::move(AuthenticateClient(client_fd));
-  strcpy(reinterpret_cast<char *>(session_->password), root_password_.c_str());
+  unsigned char hash[SHA_DIGEST_LENGTH];
+  SHA1(root_password_, strlen(root_password_), hash);
+  strcpy(reinterpret_cast<char *>(session_->password), hash);
   auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
   auto buf = buffer.get();
   int server_size = AuthWithBackendServers(session_.get(), server_fds_[0], buf, kMySQLMaxPacketLen);

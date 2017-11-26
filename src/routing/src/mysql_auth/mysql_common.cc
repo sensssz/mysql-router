@@ -269,7 +269,7 @@ auth_state_t send_backend_auth(MySQLSession *session, int fd)
   mysql_set_byte3(payload, (bytes - 4));
 
   // set packet # = 1
-  payload[3] = '\x01';
+  payload[3] = 1;
   payload += 4;
 
   // set client capabilities
@@ -313,7 +313,7 @@ auth_state_t send_backend_auth(MySQLSession *session, int fd)
 
   memcpy(payload, auth_plugin_name, strlen(auth_plugin_name));
 
-  if (routing::RdmaOperations::instance()->write(fd, payload, bytes) > 0) {
+  if (routing::RdmaOperations::instance()->write(fd, buffer.get(), bytes) > 0) {
     return AUTH_STATE_RESPONSE_SENT;
   } else {
     return AUTH_STATE_FAILED;

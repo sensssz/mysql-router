@@ -73,12 +73,13 @@ decode_mysql_server_handshake(MySQLSession *session, uint8_t *payload)
     if ((scramble_len < kMySQLScrambleSize323) ||
         scramble_len > kMySQLScrambleSize) {
       /* log this */
+      log_error("Incorrect scramble size");
       return -2;
     }
   }
   else
   {
-      scramble_len = kMySQLScrambleSize;
+    scramble_len = kMySQLScrambleSize;
   }
   // skip 10 zero bytes
   payload += 11;

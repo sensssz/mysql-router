@@ -42,7 +42,7 @@ ssize_t Connection::Recv() {
     return res;
   }
   packet_number_ = buf_[kMySQLSeqOffset]++;
-  std::cerr << "Packet number is now " << packet_number_ << std::endl;
+  std::cerr << "Packet number is now " << static_cast<int>(packet_number_) << std::endl;
   return res;
 }
 

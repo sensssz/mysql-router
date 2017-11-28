@@ -57,7 +57,7 @@ ssize_t Connection::Send(size_t size) {
   buf_[kMySQLSeqOffset] = packet_number_;
   std::cerr << "Sending " << size << " bytes" << std::endl;
   ShowBinaryData(reinterpret_cast<const char *>(buf_), size);
-  return sock_ops_->write(fd_, buf_, size);
+  return sock_ops_->write(fd_, buf_, size + kMySQLHeaderLen);
 }
 
 ssize_t Connection::Send(uint8_t *buffer, size_t size) {

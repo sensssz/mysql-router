@@ -239,7 +239,7 @@ create_capabilities(MySQLSession *session, bool db_specified, bool compress)
  * @param dcb  Backend DCB
  * @return True on success, false on failure
  */
-auth_state_t send_backend_auth(MySQLSession *session, , Connection *connection)
+auth_state_t send_backend_auth(MySQLSession *session, Connection *connection)
 {
   uint8_t client_capabilities[4] = {0, 0, 0, 0};
   uint8_t *curr_passwd = session->password;

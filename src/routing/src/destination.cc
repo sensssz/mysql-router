@@ -180,7 +180,7 @@ std::unique_ptr<Sharder> RouteDestination::GetSharder() {
     return nullptr;
   }
 
-  return std::unique_ptr<Sharder>(new Sharder(server_fds);
+  return std::unique_ptr<Sharder>(new Sharder(server_fds));
 }
 
 int RouteDestination::get_mysql_socket(const TCPAddress &addr, const int connect_timeout, const bool log_errors) {

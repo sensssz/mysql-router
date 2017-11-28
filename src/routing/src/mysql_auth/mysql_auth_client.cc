@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static std::unique_ptr<MySQLSession> MySQLHandshake(Connection *connection) {
+static std::unique_ptr<MySQLSession> MySQLHandshake(Connection *client) {
   uint8_t *outbuf = nullptr;
   size_t mysql_payload_size = 0;
   /* uint8_t mysql_filler = GW_MYSQL_HANDSHAKE_FILLER; not needed*/
@@ -59,7 +59,7 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(Connection *connection) {
       sizeof(mysql_filler_ten) + 12 + sizeof(/* mysql_last_byte */ uint8_t) + plugin_name_len +
       sizeof(/* mysql_last_byte */ uint8_t);
 
-  outbuf = connection->Payload();
+  outbuf = client->Payload();
 
   // current buffer pointer
   mysql_handshake_payload = outbuf;
@@ -137,7 +137,7 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(Connection *connection) {
   *mysql_handshake_payload = 0x00;
 
   // writing data in the Client buffer queue
-  if (connection->Send(mysql_payload_size) <= 0) {
+  if (client->Send(mysql_payload_size) <= 0) {
     return nullptr;
   } else {
     return std::move(session);
@@ -173,19 +173,19 @@ static void store_client_information(MySQLSession *session, uint8_t *data, size_
   }
 }
 
-std::unique_ptr<MySQLSession> AuthenticateClient(Connection *connection) {
+std::unique_ptr<MySQLSession> AuthenticateClient(Connection *client) {
   log_debug("Sending authenticate packet ");
-  auto session = MySQLHandshake(connection);
+  auto session = MySQLHandshake(client);
   if (session.get() == nullptr) {
     log_error("Error sending authenticate packet");
     return nullptr;
   }
   log_debug("Reading client response");
-  ssize_t size = connection->Recv();
+  ssize_t size = client->Recv();
   if (size <= 0) {
     log_error("Error receiving client response");
     return nullptr;
   }
-  store_client_information(session.get(), connection->Buffer(), size);
+  store_client_information(session.get(), client->Buffer(), size);
   return std::move(session);
 }

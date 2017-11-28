@@ -37,13 +37,12 @@ ssize_t Connection::TryRecv() {
 
 ssize_t Connection::Send(size_t size) {
   mysql_set_byte3(buf_, size);
-  packet_number_++;
   buf_[kMySQLSeqOffset] = packet_number_;
   ssize_t res = sock_ops_->write(fd_, buf_, size);
   if (res <= 0) {
-    packet_number_--;
     return res;
   } else {
+    packet_number_++;
     return res;
   }
 }

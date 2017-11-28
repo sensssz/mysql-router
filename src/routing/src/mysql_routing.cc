@@ -211,13 +211,14 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   RoutingProtocolBuffer buffer(net_buffer_length_);
   auto buffer_length = buffer.size();
   bool handshake_done = false;
+  Connection client_connection(client, routing::SocketOperations::instance());
 
   auto sharder = destination_->GetSharder(root_password_);
   if (sharder.get() == nullptr) {
     return;
   }
 
-  if (!sharder->Authenticate(client)) {
+  if (!sharder->Authenticate(&client_connection)) {
     return;
   }
   handshake_done = true;
@@ -361,11 +362,11 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   }
 
   // Either client or server terminated
-  socket_operations_->shutdown(client);
+  // socket_operations_->shutdown(client);
   // rdma_operations_->shutdown(server);
-  socket_operations_->close(client);
+  // socket_operations_->close(client);
   // rdma_operations_->close(server);
-  sharder->DisconnectServers();
+  // sharder->DisconnectServers();
 
   --info_active_routes_;
 #ifndef _WIN32

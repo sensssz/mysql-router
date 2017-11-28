@@ -98,9 +98,6 @@ decode_mysql_server_handshake(MySQLSession *session, uint8_t *payload)
 
 int AuthWithBackendServers(MySQLSession *session, Connection *connection) {
   log_debug("Authenticating with server %d", connection->FileDescriptor());
-  auto rdma_operation = routing::RdmaOperations::instance();
-  auto auth_buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
-  auto auth_buf = auth_buffer.get();
   ssize_t size = 0;
   log_debug("Reading first packet from server");
   if ((size = connection->Recv()) < 0) {
@@ -110,7 +107,7 @@ int AuthWithBackendServers(MySQLSession *session, Connection *connection) {
   log_debug("Decoding server response");
   decode_mysql_server_handshake(session, connection->Buffer());
   strcpy(session->user, "root");
-  if(send_backend_auth(session, fd) == AUTH_STATE_FAILED) {
+  if(send_backend_auth(session, connection) == AUTH_STATE_FAILED) {
     log_error("Authentication returns failure");
     return 0;
   }

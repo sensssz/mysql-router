@@ -39,7 +39,7 @@ ssize_t Connection::Send(size_t size) {
   }
 }
 
-ssize_t Connection::Send(const uint8_t *buffer, size_t size) {
+ssize_t Connection::Send(uint8_t *buffer, size_t size) {
   packet_number_ = buffer[kMySQLSeqOffset];
   ssize_t res = sock_ops_->write(fd_, buffer, size);
   if (res <= 0) {

@@ -22,7 +22,7 @@ public:
   ssize_t Recv();
   ssize_t TryRecv();
   ssize_t Send(size_t size);
-  ssize_t Send(const uint8_t *buffer, size_t size);
+  ssize_t Send(uint8_t *buffer, size_t size);
   bool SendQuery(const std::string &query);
 
 private:

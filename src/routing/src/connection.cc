@@ -2,8 +2,23 @@
 #include "mysql_auth/mysql_common.h"
 
 #include <iostream>
+#include <sstream>
+
+#include <cctype>
 
 using routing::SocketOperationsBase;
+
+static void ShowBinaryData(const char *data, size_t len) {
+  std::stringstream ss;
+  for (size_t i = 0; i < len; i++) {
+    if (isprint(data[i])) {
+      ss << (char) data[i];
+    } else {
+      ss << '\\' << (int) data[i];
+    }
+  }
+  std::cerr << "Data is " << ss.str() << std::endl;
+}
 
 Connection::Connection(int fd, SocketOperationsBase *sock_ops) : fd_(fd), packet_number_(0),
     buffer_(new uint8_t[kBufferSize]), buf_(buffer_.get()), sock_ops_(sock_ops) {}
@@ -40,8 +55,8 @@ ssize_t Connection::TryRecv() {
 ssize_t Connection::Send(size_t size) {
   mysql_set_byte3(buf_, size);
   buf_[kMySQLSeqOffset] = packet_number_;
-  std::cerr << "Packet number: " << static_cast<int>(packet_number_)
-            << ", is_sock: " << (sock_ops_ == routing::SocketOperations::instance()) << std::endl;
+  std::cerr << "Sending " << size << " bytes" << std::endl;
+  ShowBinaryData(buf_, size);
   return sock_ops_->write(fd_, buf_, size);
 }
 

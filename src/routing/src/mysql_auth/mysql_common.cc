@@ -241,6 +241,7 @@ auth_state_t send_backend_auth(MySQLSession *session, int fd)
 {
   uint8_t client_capabilities[4] = {0, 0, 0, 0};
   uint8_t *curr_passwd = session->password;
+  curr_passwd = nullptr;
 
   std::cerr << "Logging in as " << session->user << " with password " << session->password << std::endl;
 
@@ -278,7 +279,7 @@ auth_state_t send_backend_auth(MySQLSession *session, int fd)
   payload += 4;
 
   // set client capabilities
-  memcpy(payload, &client_capabilities, 4);
+  mysql_set_byte4(payload, client_capabilities);
 
   // set now the max-packet size
   payload += 4;

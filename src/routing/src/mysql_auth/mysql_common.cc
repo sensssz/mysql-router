@@ -279,7 +279,7 @@ auth_state_t send_backend_auth(MySQLSession *session, int fd)
   payload += 4;
 
   // set client capabilities
-  mysql_set_byte4(payload, client_capabilities);
+  memcpy(payload, client_capabilities, 4);
 
   // set now the max-packet size
   payload += 4;

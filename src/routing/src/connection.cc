@@ -8,18 +8,6 @@
 
 using routing::SocketOperationsBase;
 
-static void ShowBinaryData(const char *data, size_t len) {
-  std::stringstream ss;
-  for (size_t i = 0; i < len; i++) {
-    if (isprint(data[i])) {
-      ss << (char) data[i];
-    } else {
-      ss << '\\' << (int) data[i];
-    }
-  }
-  std::cerr << "Data is " << ss.str() << std::endl;
-}
-
 Connection::Connection(int fd, SocketOperationsBase *sock_ops) : fd_(fd), packet_number_(0),
     buffer_(new uint8_t[kBufferSize]), buf_(buffer_.get()), sock_ops_(sock_ops) {}
 
@@ -42,7 +30,6 @@ ssize_t Connection::Recv() {
     return res;
   }
   packet_number_ = buf_[kMySQLSeqOffset] + 1;
-  std::cerr << "Packet number is now " << static_cast<int>(packet_number_) << std::endl;
   return res;
 }
 
@@ -56,8 +43,6 @@ ssize_t Connection::TryRecv() {
 ssize_t Connection::Send(size_t size) {
   mysql_set_byte3(buf_, size);
   buf_[kMySQLSeqOffset] = packet_number_;
-  std::cerr << "Sending " << size << " bytes" << std::endl;
-  ShowBinaryData(reinterpret_cast<const char *>(buf_), size + kMySQLHeaderLen);
   return sock_ops_->write(fd_, buf_, size + kMySQLHeaderLen);
 }
 

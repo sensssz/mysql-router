@@ -137,9 +137,11 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(Connection *connection) {
   *mysql_handshake_payload = 0x00;
 
   // writing data in the Client buffer queue
-  connection->Send(mysql_payload_size);
-
-  return std::move(session);
+  if (connection->Send(mysql_payload_size) <= 0) {
+    return nullptr;
+  } else {
+    return std::move(session);
+  }
 }
 
 /**
@@ -174,6 +176,10 @@ static void store_client_information(MySQLSession *session, uint8_t *data, size_
 std::unique_ptr<MySQLSession> AuthenticateClient(Connection *connection) {
   log_debug("Sending authenticate packet ");
   auto session = MySQLHandshake(connection);
+  if (session.get() == nullptr) {
+    log_error("Error sending authenticate packet");
+    return nullptr;
+  }
   log_debug("Reading client response");
   ssize_t size = connection->Recv();
   if (size <= 0) {

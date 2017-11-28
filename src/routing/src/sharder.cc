@@ -8,6 +8,9 @@ Sharder::Sharder(const std::vector<int> &server_fds) {
 
 bool Sharder::Authenticate(Connection *client) {
   session_ = std::move(AuthenticateClient(client));
+  if (session_.get() == nullptr) {
+    return false;
+  }
   int server_size = AuthWithBackendServers(session_.get(), &server_conns_[0]);
   if (server_size < 0) {
     log_error("Authentication fails with negative read size");

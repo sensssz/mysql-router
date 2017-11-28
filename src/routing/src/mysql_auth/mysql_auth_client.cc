@@ -37,7 +37,7 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(Connection *client) {
   memcpy(session->scramble, server_scramble, kMySQLScrambleSize);
 
   // thread id, now put thePID
-  id_num = getpid() + id;
+  id_num = getpid() + id++;
   mysql_set_byte4(mysql_thread_id_num, id_num);
 
   memcpy(mysql_scramble_buf, server_scramble, 8);

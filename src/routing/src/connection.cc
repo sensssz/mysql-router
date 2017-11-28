@@ -1,6 +1,8 @@
 #include "mysqlrouter/connection.h"
 #include "mysql_auth/mysql_common.h"
 
+#include <iostream>
+
 using routing::SocketOperationsBase;
 
 Connection::Connection(int fd, SocketOperationsBase *sock_ops) : fd_(fd), packet_number_(0),
@@ -38,6 +40,7 @@ ssize_t Connection::TryRecv() {
 ssize_t Connection::Send(size_t size) {
   mysql_set_byte3(buf_, size);
   buf_[kMySQLSeqOffset] = packet_number_;
+  std::cerr << packet_number_ << std::endl;
   return sock_ops_->write(fd_, buf_, size);
 }
 

@@ -40,7 +40,8 @@ ssize_t Connection::TryRecv() {
 ssize_t Connection::Send(size_t size) {
   mysql_set_byte3(buf_, size);
   buf_[kMySQLSeqOffset] = packet_number_;
-  std::cerr << "Packet number: " << packet_number_ << ", is_sock: " << (sock_ops_ == routing::SocketOperations::instance()) << std::endl;
+  std::cerr << "Packet number: " << static_cast<int>(packet_number_)
+            << ", is_sock: " << (sock_ops_ == routing::SocketOperations::instance()) << std::endl;
   return sock_ops_->write(fd_, buf_, size);
 }
 

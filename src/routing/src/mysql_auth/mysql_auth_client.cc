@@ -4,11 +4,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static std::unique_ptr<MySQLSession> MySQLHandshake(int fd) {
+static std::unique_ptr<MySQLSession> MySQLHandshake(Connection *connection) {
   uint8_t *outbuf = nullptr;
   size_t mysql_payload_size = 0;
-  uint8_t mysql_packet_header[4];
-  uint8_t mysql_packet_id = 0;
   /* uint8_t mysql_filler = GW_MYSQL_HANDSHAKE_FILLER; not needed*/
   uint8_t mysql_protocol_version = kMySQLProtocolVersion;
   uint8_t *mysql_handshake_payload = nullptr;
@@ -26,6 +24,7 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(int fd) {
   const char *version_string;
   size_t len_version_string = 0;
   int id_num;
+  static int id = 0;
 
   auto session = std::unique_ptr<MySQLSession>(new MySQLSession);
 
@@ -38,7 +37,7 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(int fd) {
   memcpy(session->scramble, server_scramble, kMySQLScrambleSize);
 
   // thread id, now put thePID
-  id_num = getpid() + fd;
+  id_num = getpid() + id;
   mysql_set_byte4(mysql_thread_id_num, id_num);
 
   memcpy(mysql_scramble_buf, server_scramble, 8);
@@ -60,19 +59,10 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(int fd) {
       sizeof(mysql_filler_ten) + 12 + sizeof(/* mysql_last_byte */ uint8_t) + plugin_name_len +
       sizeof(/* mysql_last_byte */ uint8_t);
 
-  size_t size = sizeof(mysql_packet_header) + mysql_payload_size;
-  auto buf = std::unique_ptr<uint8_t[]>(new uint8_t[size]);
-  outbuf = buf.get();
-
-  // write packet header with mysql_payload_size
-  mysql_set_byte3(mysql_packet_header, mysql_payload_size);
-
-  // write packet number, now is 0
-  mysql_packet_header[3] = mysql_packet_id;
-  memcpy(outbuf, mysql_packet_header, sizeof(mysql_packet_header));
+  outbuf = connection->Payload();
 
   // current buffer pointer
-  mysql_handshake_payload = outbuf + sizeof(mysql_packet_header);
+  mysql_handshake_payload = outbuf;
 
   // write protocol version
   memcpy(mysql_handshake_payload, &mysql_protocol_version, sizeof(mysql_protocol_version));
@@ -147,12 +137,10 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(int fd) {
   *mysql_handshake_payload = 0x00;
 
   // writing data in the Client buffer queue
-  // dcb->func.write(dcb, buf);
-  routing::SocketOperations::instance()->write(fd, outbuf, size);
+  connection->Send(mysql_payload_size);
 
   return std::move(session);
 }
-
 
 /**
  * @brief Store client connection information into the DCB
@@ -183,18 +171,15 @@ static void store_client_information(MySQLSession *session, uint8_t *data, size_
   }
 }
 
-std::unique_ptr<MySQLSession> AuthenticateClient(int fd) {
+std::unique_ptr<MySQLSession> AuthenticateClient(Connection *connection) {
   log_debug("Sending authenticate packet ");
-  auto session = MySQLHandshake(fd);
-  auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
-  auto buf = buffer.get();
-  auto socket_operation = routing::SocketOperations::instance();
+  auto session = MySQLHandshake(connection);
   log_debug("Reading client response");
-  ssize_t size = socket_operation->read(fd, buf, kMySQLMaxPacketLen);
+  ssize_t size = connection->Recv();
   if (size <= 0) {
     log_error("Error receiving client response");
     return nullptr;
   }
-  store_client_information(session.get(), buf, size);
+  store_client_information(session.get(), connection->Buffer(), size);
   return std::move(session);
 }

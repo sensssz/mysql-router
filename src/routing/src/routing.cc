@@ -270,6 +270,10 @@ ssize_t SocketOperations::read(int fd, void *buffer, size_t nbyte) {
 #endif
 }
 
+bool SocketOperations::has_data(int fd) {
+  return false;
+}
+
 void SocketOperations::close(int fd) {
 #ifndef _WIN32
   ::close(fd);
@@ -318,6 +322,10 @@ ssize_t RdmaOperations::read(int fd, void *buffer, size_t nbyte) {
 #else
   return ::recv(fd, reinterpret_cast<char *>(buffer), nbyte, 0);
 #endif
+}
+
+bool RdmaOperations::has_data(int fd) {
+  return rdma_fds_[fd]->HasData();
 }
 
 void RdmaOperations::close(int fd) {

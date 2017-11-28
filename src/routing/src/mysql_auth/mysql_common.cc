@@ -137,7 +137,7 @@ response_length(char *user, uint8_t *passwd, char *dbname, const char *auth_modu
   bytes++;
 
   // the packet header
-  bytes += 4;
+  // bytes += 4;
 
   return bytes;
 }
@@ -237,7 +237,7 @@ create_capabilities(MySQLSession *session, bool db_specified, bool compress)
  * @param dcb  Backend DCB
  * @return True on success, false on failure
  */
-auth_state_t send_backend_auth(MySQLSession *session, int fd)
+auth_state_t send_backend_auth(MySQLSession *session, , Connection *connection)
 {
   uint8_t client_capabilities[4] = {0, 0, 0, 0};
   uint8_t *curr_passwd = session->password;
@@ -265,18 +265,10 @@ auth_state_t send_backend_auth(MySQLSession *session, int fd)
   long bytes = response_length(session->user, curr_passwd,
                                session->db, auth_plugin_name);
 
-  auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[bytes]);
-  uint8_t *payload = buffer.get();
+  uint8_t *payload = connection->Payload();
 
   // clearing data
   memset(payload, '\0', bytes);
-
-  // put here the paylod size: bytes to write - 4 bytes packet header
-  mysql_set_byte3(payload, (bytes - 4));
-
-  // set packet # = 1
-  payload[3] = 1;
-  payload += 4;
 
   // set client capabilities
   memcpy(payload, client_capabilities, 4);
@@ -319,7 +311,7 @@ auth_state_t send_backend_auth(MySQLSession *session, int fd)
 
   memcpy(payload, auth_plugin_name, strlen(auth_plugin_name));
 
-  if (routing::RdmaOperations::instance()->write(fd, buffer.get(), bytes) > 0) {
+  if (connection->Send(bytes) > 0) {
     return AUTH_STATE_RESPONSE_SENT;
   } else {
     return AUTH_STATE_FAILED;

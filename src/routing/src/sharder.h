@@ -3,27 +3,20 @@
 
 #include "mysql_auth/mysql_auth_client.h"
 #include "mysql_auth/mysql_auth_server.h"
+#include "connection.h"
 
 #include <vector>
 
 class Sharder {
 public:
-  Sharder(std::vector<int> &&server_fds, const std::string &root_password);
-  Sharder(const std::vector<int> &server_fds, const std::string &root_password);
-  ~Sharder();
+  Sharder(const std::vector<int> &server_fds);
 
-  int GetShard(const std::string &column, int key);
-  int GetDefaultShard() {
-    return server_fds_[0];
-  }
-  bool Authenticate(int client_fd);
+  bool Authenticate(Connection *client);
   int Read(uint8_t *buffer, size_t size);
   int Write(uint8_t *buffer, size_t size);
-  void DisconnectServers();
 
 private:
-  std::vector<int> server_fds_;
-  std::string root_password_;
+  std::vector<Connection> server_conns_;
   std::unique_ptr<MySQLSession> session_;
 };
 

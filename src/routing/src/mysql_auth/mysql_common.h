@@ -2,6 +2,7 @@
 #define MYSQL_AUTH_MYSQL_COMMON_H_
 
 #include "mysqlrouter/routing.h"
+#include "connection.h"
 
 #include <memory>
 
@@ -180,8 +181,10 @@ typedef enum
   AUTH_STATE_COMPLETE /**< Authentication is complete */
 } auth_state_t;
 
+class Connection;
+
 int generate_random_str(char *output, int len);
-auth_state_t send_backend_auth(MySQLSession *session, int fd);
+auth_state_t send_backend_auth(MySQLSession *session, Connection *connection);
 bool mysql_is_ok_packet(uint8_t *buffer);
 bool mysql_is_result_set(uint8_t *buffer);
 

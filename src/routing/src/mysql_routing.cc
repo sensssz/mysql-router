@@ -223,7 +223,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   handshake_done = true;
 
   // int server = destination_->get_server_socket(destination_connect_timeout_, &error);
-  int server = sharder->GetDefaultShard();
+  int server = 1;
 
   if (!(server > 0 && client > 0)) {
     std::stringstream os;

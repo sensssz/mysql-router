@@ -16,6 +16,9 @@ public:
   ssize_t Read(void *buffer, size_t size) {
     return context_->buffer.Read(buffer, size);
   }
+  bool HasData() {
+    return context_->buffer.HasData();
+  }
 
 protected:
   virtual Status OnAddressResolved(struct rdma_cm_id *id) override;

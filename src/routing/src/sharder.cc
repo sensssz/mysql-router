@@ -1,45 +1,36 @@
 #include "sharder.h"
 
-Sharder::Sharder(std::vector<int> &&server_fds, const std::string &root_password) :
-    server_fds_(std::move(server_fds)), root_password_(root_password) {}
-
-Sharder::Sharder(const std::vector<int> &server_fds, const std::string &root_password) :
-    server_fds_(server_fds), root_password_(root_password) {}
-
-Sharder::~Sharder() {
-  DisconnectServers();
+Sharder::Sharder(const std::vector<int> &server_fds) {
+  for (auto fd : server_fds) {
+    server_conns_->emplace_back(fd, routing::RdmaOperations::instance());
+  }
 }
 
-int Sharder::GetShard(const std::string &column, int key) {
-  return server_fds_[0];
-}
-
-bool Sharder::Authenticate(int client_fd) {
-  session_ = std::move(AuthenticateClient(client_fd));
-  strcpy(reinterpret_cast<char *>(session_->password), root_password_.c_str());
+bool Sharder::Authenticate(Connection *client) {
+  session_ = std::move(AuthenticateClient(client));
   auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
   auto buf = buffer.get();
-  int server_size = AuthWithBackendServers(session_.get(), server_fds_[0], buf, kMySQLMaxPacketLen);
+  int server_size = AuthWithBackendServers(session_.get(), server_conns_[0]);
   if (server_size < 0) {
     log_error("Authentication fails with negative read size");
-    DisconnectServers();
+    server_conns_.clear();
     return false;
   }
-  if (!mysql_is_ok_packet(buf)) {
+  if (!mysql_is_ok_packet(server_conns_[0].Buffer())) {
     log_error("Server response is not OK");
   }
-  for (auto it = server_fds_.begin() + 1; it != server_fds_.end(); it++) {
-    int size = AuthWithBackendServers(session_.get(), *it, nullptr, 0);
+  for (auto it = server_conns_.begin() + 1; it != server_conns_.end(); it++) {
+    int size = AuthWithBackendServers(session_.get(), *it);
     if (size < 0) {
       log_error("Authentication fails with negative read size");
-      DisconnectServers();
+      server_conns_.clear();
       return false;
     }
   }
-  ssize_t size = routing::SocketOperations::instance()->write(client_fd, buf, server_size);
+  ssize_t size = client->Send(server_size);
   if (size < 0) {
     log_error("Sending authentication result to client returns negative read size");
-    DisconnectServers();
+    server_conns_.clear();
     return false;
   }
   return true;
@@ -49,27 +40,27 @@ int Sharder::Read(uint8_t *buffer, size_t size) {
   auto rdma_operations = routing::RdmaOperations::instance();
   bool error = false;
   // We do a read on all servers, whether there's error or not
-  for (auto it = server_fds_.begin() + 1; it != server_fds_.end(); it++) {
-    if (rdma_operations->read(*it, buffer, size)) {
+  for (auto it = server_conns_.begin() + 1; it != server_conns_.end(); it++) {
+    if (it->Recv() <= 0) {
       error = true;
     }
   }
-  int read_size = static_cast<int>(rdma_operations->read(server_fds_[0], buffer, size));
+  int read_size = static_cast<int>(server_conns_[0]->Recv());
   if (read_size < 0) {
     error = true;
   }
   if (error) {
     return -1;
   } else {
+    memcpy(buffer, server_conns_[0].Buffer(), read_size);
     return read_size;
   }
 }
 
 int Sharder::Write(uint8_t *buffer, size_t size) {
-  auto rdma_operations = routing::RdmaOperations::instance();
   bool error = false;
-  for (auto fd : server_fds_) {
-    if (rdma_operations->write(fd, buffer, size) < 0) {
+  for (auto conn : server_conns_) {
+    if (conn->Send(buffer, size) < 0) {
       error = true;
     }
   }
@@ -78,12 +69,4 @@ int Sharder::Write(uint8_t *buffer, size_t size) {
   } else {
     return static_cast<int>(size);
   }
-}
-
-void Sharder::DisconnectServers() {
-  auto rdma_operations = routing::RdmaOperations::instance();
-  for (auto fd : server_fds_) {
-    rdma_operations->close(fd);
-  }
-  server_fds_.clear();
 }

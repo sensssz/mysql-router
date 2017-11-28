@@ -18,6 +18,7 @@ set(ROUTING_SOURCE_FILES_X_PROTOCOL
 )
 
 set(ROUTING_SOURCE_FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/connection.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/mysql_routing.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/utils.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/destination.cc

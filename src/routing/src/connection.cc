@@ -41,7 +41,7 @@ ssize_t Connection::Recv() {
   if (res <= 0) {
     return res;
   }
-  packet_number_ = buf_[kMySQLSeqOffset]++;
+  packet_number_ = buf_[kMySQLSeqOffset] + 1;
   std::cerr << "Packet number is now " << static_cast<int>(packet_number_) << std::endl;
   return res;
 }

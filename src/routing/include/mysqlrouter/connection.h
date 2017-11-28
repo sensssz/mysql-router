@@ -2,10 +2,9 @@
 #define CONNECTION_H_
 
 #include "mysqlrouter/routing.h"
+#include "mysql_auth/mysql_constant.h"
 
 #include <memory>
-
-#include <cstdint>
 
 class Connection {
 public:

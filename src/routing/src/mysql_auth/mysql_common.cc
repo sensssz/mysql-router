@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include <openssl/sha.h>
+
 static unsigned int x = 123456789, y = 987654321, z = 43219876, c = 6543217; /* Seed variables */
 
 static unsigned int random_jkiss()

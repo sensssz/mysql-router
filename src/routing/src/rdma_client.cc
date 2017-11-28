@@ -53,7 +53,7 @@ ssize_t RdmaClient::SendToServer(void *buffer, size_t size) {
   memcpy(context_->send_region + sizeof(size), buffer, size);
   s = PostSend(context_, size + sizeof(size));
   if (s.ok()) {
-    std::cerr << size << " bytes sent" << std::endl;
+    // std::cerr << size << " bytes sent" << std::endl;
     return static_cast<ssize_t>(size);
   } else {
     return -1;

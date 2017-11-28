@@ -9,6 +9,7 @@
 class Connection {
 public:
   Connection(int fd, routing::SocketOperationsBase *sock_ops);
+  Connection(const Connection &other);
   ~Connection();
   uint8_t *Payload() {
     return buf_ + kMySQLHeaderLen;

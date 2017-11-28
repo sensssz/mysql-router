@@ -245,7 +245,7 @@ auth_state_t send_backend_auth(MySQLSession *session, Connection *connection)
   uint8_t *curr_passwd = session->password;
   curr_passwd = nullptr;
 
-  std::cerr << "Logging in as " << session->user << " with password " << session->password << std::endl;
+  // std::cerr << "Logging in as " << session->user << " with password " << session->password << std::endl;
 
   /**
    * If session is stopping or has failed return with error.

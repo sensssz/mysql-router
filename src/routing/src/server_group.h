@@ -1,7 +1,7 @@
 #ifndef SERVER_GROUP_H_
 #define SERVER_GROUP_H_
 
-#include "connection.h"
+#include "mysqlrouter/connection.h"
 
 #include <vector>
 

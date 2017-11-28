@@ -1,5 +1,4 @@
-#include "connection.h"
-
+#include "mysqlrouter/connection.h"
 #include "mysql_auth/mysql_common.h"
 
 using routing::SocketOperationsBase;

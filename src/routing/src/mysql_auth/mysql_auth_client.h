@@ -2,7 +2,6 @@
 #define MYSQL_AUTH_MYSQL_AUTH_CLIENT_H_
 
 #include "mysql_common.h"
-#include "connection.h"
 
 std::unique_ptr<MySQLSession> AuthenticateClient(Connection *connection);
 

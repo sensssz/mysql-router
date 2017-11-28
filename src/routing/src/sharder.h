@@ -3,7 +3,7 @@
 
 #include "mysql_auth/mysql_auth_client.h"
 #include "mysql_auth/mysql_auth_server.h"
-#include "connection.h"
+#include "mysqlrouter/connection.h"
 
 #include <vector>
 

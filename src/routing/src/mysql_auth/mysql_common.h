@@ -2,7 +2,7 @@
 #define MYSQL_AUTH_MYSQL_COMMON_H_
 
 #include "mysqlrouter/routing.h"
-#include "connection.h"
+#include "mysqlrouter/connection.h"
 
 #include <memory>
 

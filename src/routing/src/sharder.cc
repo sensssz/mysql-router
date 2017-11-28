@@ -2,14 +2,12 @@
 
 Sharder::Sharder(const std::vector<int> &server_fds) {
   for (auto fd : server_fds) {
-    server_conns_.emplace_back(fd, routing::RdmaOperations::instance());
+    server_conns_.push_back(Connection(fd, routing::RdmaOperations::instance()));
   }
 }
 
 bool Sharder::Authenticate(Connection *client) {
   session_ = std::move(AuthenticateClient(client));
-  auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[kMySQLMaxPacketLen]);
-  auto buf = buffer.get();
   int server_size = AuthWithBackendServers(session_.get(), &server_conns_[0]);
   if (server_size < 0) {
     log_error("Authentication fails with negative read size");
@@ -27,7 +25,7 @@ bool Sharder::Authenticate(Connection *client) {
       return false;
     }
   }
-  ssize_t size = client->Send(server_size);
+  ssize_t size = client->Send(server_conns_[0].buffer(), server_size);
   if (size < 0) {
     log_error("Sending authentication result to client returns negative read size");
     server_conns_.clear();
@@ -37,7 +35,6 @@ bool Sharder::Authenticate(Connection *client) {
 }
 
 int Sharder::Read(uint8_t *buffer, size_t size) {
-  auto rdma_operations = routing::RdmaOperations::instance();
   bool error = false;
   // We do a read on all servers, whether there's error or not
   for (auto it = server_conns_.begin() + 1; it != server_conns_.end(); it++) {

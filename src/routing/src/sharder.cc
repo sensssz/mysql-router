@@ -25,7 +25,7 @@ bool Sharder::Authenticate(Connection *client) {
       return false;
     }
   }
-  ssize_t size = client->Send(server_conns_[0].buffer(), server_size);
+  ssize_t size = client->Send(server_conns_[0].Buffer(), server_size);
   if (size < 0) {
     log_error("Sending authentication result to client returns negative read size");
     server_conns_.clear();

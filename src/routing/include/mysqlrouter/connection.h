@@ -1,8 +1,8 @@
 #ifndef CONNECTION_H_
 #define CONNECTION_H_
 
-#include "mysqlrouter/routing.h"
-#include "mysql_auth/mysql_constant.h"
+#include "routing.h"
+#include "mysql_constant.h"
 
 #include <memory>
 

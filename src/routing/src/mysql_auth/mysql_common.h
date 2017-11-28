@@ -2,7 +2,7 @@
 #define MYSQL_AUTH_MYSQL_COMMON_H_
 
 #include "mysqlrouter/connection.h"
-#include "mysql_constant.h"
+#include "mysqlrouter/mysql_constant.h"
 
 #include <cstring>
 

@@ -26,7 +26,7 @@ set(ROUTING_SOURCE_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/dest_first_available.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/context.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/routing.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/sharder.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/server_group.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/rdma_communicator.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/rdma_client.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/spsc_ring_buffer.cc

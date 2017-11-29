@@ -158,7 +158,7 @@ int RouteDestination::get_server_socket(int connect_timeout, int *error) noexcep
   return -1; // no destination is available
 }
 
-std::unique_ptr<Sharder> RouteDestination::GetSharder() {
+std::unique_ptr<ServerGroup> RouteDestination::GetServerGroup() {
   std::vector<int> server_fds;
   bool error = false;
 
@@ -180,7 +180,7 @@ std::unique_ptr<Sharder> RouteDestination::GetSharder() {
     return nullptr;
   }
 
-  return std::unique_ptr<Sharder>(new Sharder(server_fds));
+  return std::unique_ptr<ServerGroup>(new ServerGroup(server_fds));
 }
 
 int RouteDestination::get_mysql_socket(const TCPAddress &addr, const int connect_timeout, const bool log_errors) {

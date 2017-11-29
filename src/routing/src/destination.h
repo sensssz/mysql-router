@@ -34,7 +34,7 @@
 #include "mysqlrouter/routing.h"
 #include "logger.h"
 #include "protocol/protocol.h"
-#include "sharder.h"
+#include "server_group.h"
 
 /** @class RouteDestination
  * @brief Manage destinations for a Connection Routing
@@ -122,7 +122,7 @@ public:
    */
   virtual int get_server_socket(int connect_timeout, int *error) noexcept;
 
-  virtual std::unique_ptr<Sharder> GetSharder();
+  virtual std::unique_ptr<ServerGroup> GetServerGroup();
 
   /** @brief Gets the number of destinations
    *

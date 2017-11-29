@@ -213,12 +213,12 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   bool handshake_done = false;
   Connection client_connection(client, routing::SocketOperations::instance());
 
-  auto sharder = destination_->GetSharder();
-  if (sharder.get() == nullptr) {
+  auto server_group = destination_->GetServerGroup();
+  if (server_group.get() == nullptr) {
     return;
   }
 
-  if (!sharder->Authenticate(&client_connection)) {
+  if (!server_group->Authenticate(&client_connection)) {
     return;
   }
   handshake_done = true;
@@ -274,13 +274,13 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       log_error("Read from client fails");
       break;
     }
-    if (sharder->Write(&buffer.front(), bytes_read) <= 0) {
+    if (server_group->Write(&buffer.front(), bytes_read) <= 0) {
       log_error("Write to servers fails");
       break;
     }
     bytes_up += bytes_read;
 
-    bytes_read = sharder->Read(&buffer.front(), buffer_length);
+    bytes_read = server_group->Read(&buffer.front(), buffer_length);
     if (bytes_read <= 0) {
       log_error("Read from servers fail");
       break;

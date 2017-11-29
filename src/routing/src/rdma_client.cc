@@ -1,11 +1,26 @@
 #include "mysqlrouter/rdma_client.h"
 
 #include <iostream>
+#include <sstream>
+
+#include <cctype>
 
 #include <netdb.h>
 #include <unistd.h>
 
 const int kTimeoutInMs = 500; /* ms */
+
+static void ShowBinaryData(const char *data, size_t len) {
+  std::stringstream ss;
+  for (size_t i = 0; i < len; i++) {
+    if (isprint(data[i])) {
+      ss << (char) data[i];
+    } else {
+      ss << '\\' << (int) data[i];
+    }
+  }
+  std::cerr << "Data is " << ss.str() << std::endl;
+}
 
 RdmaClient::RdmaClient(std::string hostname, int port) :
     port_(port), hostname_(hostname), context_(nullptr) {}
@@ -54,6 +69,7 @@ ssize_t RdmaClient::SendToServer(void *buffer, size_t size) {
   s = PostSend(context_, size + sizeof(size));
   if (s.ok()) {
     // std::cerr << size << " bytes sent" << std::endl;
+    ShowBinaryData(reinterpret_cast<char *>(buffer), size);
     return static_cast<ssize_t>(size);
   } else {
     return -1;

@@ -20,7 +20,7 @@ public:
 
 private:
   std::vector<Connection> server_conns_;
-  std::vector<bool> read_for_write_;
+  std::vector<bool> ready_for_write_;
   std::unique_ptr<MySQLSession> session_;
 };
 

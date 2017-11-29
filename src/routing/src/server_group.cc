@@ -3,6 +3,7 @@
 ServerGroup::ServerGroup(const std::vector<int> &server_fds) {
   for (auto fd : server_fds) {
     server_conns_.emplace_back(fd, routing::RdmaOperations::instance());
+    ready_for_write_.push_back(true);
   }
 }
 
@@ -69,4 +70,12 @@ int ServerGroup::Write(uint8_t *buffer, size_t size) {
   } else {
     return static_cast<int>(size);
   }
+}
+
+bool ServerGroup::SendQuery(int server_index, const std::string &query) {
+  return true;
+}
+
+bool ServerGroup::ForwardToAll(const std::string &query) {
+  return true;
 }

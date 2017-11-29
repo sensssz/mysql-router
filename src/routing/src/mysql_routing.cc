@@ -267,46 +267,8 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   ++info_active_routes_;
   ++info_handled_routes_;
 
-  // nfds = std::max(client, server) + 1;
-
   int pktnr = 0;
   while (true) {
-//     fd_set readfds;
-//     fd_set errfds;
-//     // Reset on each loop
-//     FD_ZERO(&readfds);
-//     FD_ZERO(&errfds);
-//     FD_SET(client, &readfds);
-//     FD_SET(server, &readfds);
-
-//     if (handshake_done) {
-//       res = select(nfds, &readfds, nullptr, &errfds, nullptr);
-//     } else {
-//       // Handshake reply timeout
-//       struct timeval timeout_val;
-//       timeout_val.tv_sec = client_connect_timeout_;
-//       timeout_val.tv_usec = 0;
-//       res = select(nfds, &readfds, nullptr, &errfds, &timeout_val);
-//     }
-
-//     if (res <= 0) {
-//       if (res == 0) {
-//         extra_msg = string("Select timed out");
-//       } else if (errno > 0) {
-//         if (errno == EINTR || errno == EAGAIN)
-//           continue;
-//         extra_msg = string("Select failed with error: " + get_strerror(errno));
-// #ifdef _WIN32
-//       } else if (WSAGetLastError() > 0) {
-//         extra_msg = string("Select failed with error: " + get_message_error(WSAGetLastError()));
-// #endif
-//       } else {
-//         extra_msg = string("Select failed (" + to_string(res) + ")");
-//       }
-
-//       break;
-//     }
-
     bytes_read = socket_operations_->read(client, &buffer.front(), buffer_length);
     if (bytes_read <= 0) {
       log_error("Read from client fails");
@@ -329,30 +291,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
     }
     bytes_down += bytes_read;
 
-//     // Handle traffic from Server to Client
-//     // Note: In classic protocol Server _always_ talks first
-//     if (protocol_->copy_packets(server, client,
-//                                 &readfds, buffer, &pktnr,
-//                                 handshake_done, &bytes_read, true) == -1) {
-// #ifndef _WIN32
-//       if (errno > 0) {
-// #else
-//       if (errno > 0 || WSAGetLastError() != 0) {
-// #endif
-//         extra_msg = string("Copy server-client failed: " + to_string(get_message_error(errno)));
-//       }
-//       break;
-//     }
-//     bytes_up += bytes_read;
-
-//     // Handle traffic from Client to Server
-//     if (protocol_->copy_packets(client, server,
-//                                 &readfds, buffer, &pktnr,
-//                                 handshake_done, &bytes_read, false) == -1) {
-//       break;
-//     }
-//     bytes_down += bytes_read;
-
   } // while (true)
 
   if (!handshake_done) {
@@ -360,13 +298,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
     log_debug("[%s] Routing failed for %s: %s", name.c_str(), c_ip.first.c_str(), extra_msg.c_str());
     block_client_host(ip_array, c_ip.first.c_str(), server);
   }
-
-  // Either client or server terminated
-  // socket_operations_->shutdown(client);
-  // rdma_operations_->shutdown(server);
-  // socket_operations_->close(client);
-  // rdma_operations_->close(server);
-  // sharder->DisconnectServers();
 
   --info_active_routes_;
 #ifndef _WIN32

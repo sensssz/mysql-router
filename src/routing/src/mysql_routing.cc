@@ -376,7 +376,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           while (!server_group->IsReadyForQuery(server_for_current_query)) {
             ;
           }
-          CopyToClient(server_group->GetResult(iter->second), &client_connection);
+          CopyToClient(server_group->GetResult(server_for_current_query), &client_connection);
         }
         auto payload_size = mysql_get_byte3(client_connection.Buffer());
         if (client_connection.Send(payload_size) <= 0) {

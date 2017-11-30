@@ -94,7 +94,7 @@ static std::string ExtractQuery(uint8_t *buffer) {
 
 static std::string ToLower(const std::string &query) {
   std::string lower = query;
-  std::transform(lower.begin(), lower.end(), tolower);
+  std::transform(lower.begin(), lower.end(), lower.begin(), tolower);
   return std::move(lower);
 }
 
@@ -113,18 +113,18 @@ static bool IsWrite(const std::string &query) {
 // checking the result has arrived and the checks below.
 static void DoSpeculation(
   const std::string &query,
-  ServerGroup &server_group,
+  ServerGroup *server_group,
   int reserved_server,
   Speculator *speculator,
   std::unordered_map<std::string, int> &prefetches) {
   auto speculations = speculator->Speculate(query);
   auto iter = speculations.begin();
-  for (size_t i = 0; i < server_group.Size(); i++) {
+  for (size_t i = 0; i < server_group->Size(); i++) {
     if (static_cast<int>(i) == reserved_server ||
-        !server_group.IsReadyForQuery(i)) {
+        !server_group->IsReadyForQuery(i)) {
       continue;
     }
-    server_group.SendQuery(i, *iter);
+    server_group->SendQuery(i, *iter);
     prefetches[*iter] = static_cast<int>(i);
     iter++;
     if (iter == speculations.end()) {
@@ -359,24 +359,24 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         auto iter = prefetches.find(query);
         int server_for_current_query = -1;
         if (iter != prefetches.end()) {
-          if (server_group->IsReadyForQuery(*iter)) {
+          if (server_group->IsReadyForQuery(iter->second)) {
             // Result has been received
-            CopyToClient(server_group->GetResult(*iter), &client_connection);
+            CopyToClient(server_group->GetResult(iter->second), &client_connection);
           } else {
-            server_for_current_query = *iter;
+            server_for_current_query = iter->second;
           }
         } else {
           // Prediction not hit, send it now.
           server_for_current_query = server_group->GetAvailableServer();
           server_group->SendQuery(server_for_current_query, query);
         }
-        DoSpeculation(query, server_group, server_for_current_query, speculator_.get(), prefetches);
+        DoSpeculation(query, server_group.get(), server_for_current_query, speculator_.get(), prefetches);
         // Now either wait for the result or we already have the result
         if (server_for_current_query != -1) {
           while (!server_group->IsReadyForQuery(server_for_current_query)) {
             ;
           }
-          CopyToClient(server_group->GetResult(*iter), &client_connection);
+          CopyToClient(server_group->GetResult(iter->second), &client_connection);
         }
         auto payload_size = mysql_get_byte3(client_connection.Buffer());
         if (client_connection.Send(payload_size) <= 0) {

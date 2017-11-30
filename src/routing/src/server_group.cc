@@ -4,7 +4,8 @@ ServerGroup::ServerGroup(const std::vector<int> &server_fds) {
   for (auto fd : server_fds) {
     server_conns_.emplace_back(fd, routing::RdmaOperations::instance());
     // Any positive number means ready
-    read_results_.push_back(1);
+    has_outstanding_request_.push_back(false);
+    read_results_.push_back(0);
   }
 }
 

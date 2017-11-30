@@ -29,7 +29,7 @@ ssize_t Connection::Recv() {
   if (res <= 0) {
     return res;
   }
-  packet_number_ = buf_[kMySQLSeqOffset] + 1;
+  packet_number_ = buf_[kMySQLSeqOffset] + static_cast<uint8_t>(1);
   return res;
 }
 

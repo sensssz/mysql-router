@@ -73,19 +73,15 @@ int ServerGroup::Write(uint8_t *buffer, size_t size) {
   }
 }
 
-uint8_t *ServerGroup::GetResult(int server_index, bool do_read) {
-  if (do_read) {
-    if (Recv() <= 0) {
-      return nullptr;
-    }
-  } else if (read_results_[server_index] <= 0) {
+uint8_t *ServerGroup::GetResult(size_t server_index) {
+  if (has_outstanding_request_[server_index] || read_results_[server_index] <= 0) {
     return nullptr;
   }
   return server_conns_[server_index].Buffer();
 }
 
-bool ServerGroup::SendQuery(int server_index, const std::string &query) {
-  uint8_t *payload = Payload();
+bool ServerGroup::SendQuery(size_t server_index, const std::string &query) {
+  uint8_t *payload = server_conns_[server_index].Payload();
   payload[0] = static_cast<uint8_t>(COM_QUERY);
   payload++;
   memcpy(payload, query.c_str(), query.length());
@@ -93,7 +89,7 @@ bool ServerGroup::SendQuery(int server_index, const std::string &query) {
   return server_conns_[server_index].Send(query.length() + 1) > 0;
 }
 
-bool ServerGroup::IsReadyForQuery(int server_index) {
+bool ServerGroup::IsReadyForQuery(size_t server_index) {
   if (!has_outstanding_request_[server_index]) {
     return true;
   }
@@ -101,6 +97,9 @@ bool ServerGroup::IsReadyForQuery(int server_index) {
   read_results_[server_index] = res;
   if (res != -2) {
     has_outstanding_request_[server_index] = false;
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -110,31 +109,10 @@ bool ServerGroup::ForwardToAll(const std::string &query) {
     if (!SendQuery(i, query)) {
       error = true;
     } else {
-      has_outstanding_request_[server_index] = true;
+      has_outstanding_request_[i] = true;
     }
   }
   return !error;
-}
-
-int ServerGroup::PollServers() {
-  bool response = false;
-  int responded_server = -1;
-  while (!response) {
-    for (size_t i = 0; i < server_conns_.size(); i++) {
-      ssize_t read_res = server_conns_[i].TryRecv();
-      read_results_[i] = read_res;
-      if (read_res > 0) {
-        response = true;
-        responded_server = static_cast<int>(i);
-        break;
-      } else if (read_res != -2) {
-        response = true;
-        responded_server = -1;
-        break;
-      }
-    }
-  }
-  return responded_server;
 }
 
 size_t ServerGroup::GetAvailableServer() {

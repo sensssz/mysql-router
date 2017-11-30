@@ -17,12 +17,11 @@ public:
   }
   int Read(uint8_t *buffer, size_t size);
   int Write(uint8_t *buffer, size_t size);
-  uint8_t *GetResult(int server_index, bool do_read);
+  uint8_t *GetResult(size_t server_index);
 
-  bool SendQuery(int server_index, const std::string &query);
-  bool IsReadyForQuery(int server_index);
+  bool SendQuery(size_t server_index, const std::string &query);
+  bool IsReadyForQuery(size_t server_index);
   bool ForwardToAll(const std::string &query);
-  int PollServers();
   size_t GetAvailableServer();
 
 private:

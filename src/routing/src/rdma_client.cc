@@ -19,7 +19,7 @@ static void ShowBinaryData(const char *data, size_t len) {
       ss << '\\' << (int) data[i];
     }
   }
-  std::cerr << "Data is " << ss.str() << std::endl;
+  std::cerr << "Data being sent is " << ss.str() << std::endl;
 }
 
 RdmaClient::RdmaClient(std::string hostname, int port) :

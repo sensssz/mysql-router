@@ -279,6 +279,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
     return;
   }
 
+  std::cerr << "Initiate authentication" << std::endl;
   if (!server_group->Authenticate(&client_connection)) {
     return;
   }

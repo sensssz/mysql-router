@@ -163,6 +163,7 @@ std::unique_ptr<ServerGroup> RouteDestination::GetServerGroup() {
   bool error = false;
 
   for (auto &addr : destinations_) {
+    log_debug("Connecting to server %s:%d", addr.addr.c_str(), addr.port);
     int fd = socket_operations_->get_mysql_socket(addr, routing::kDefaultDestinationConnectionTimeout, true);
     if (fd <= 0) {
       log_error("Failed to connect to server when creating sharder");
@@ -171,6 +172,7 @@ std::unique_ptr<ServerGroup> RouteDestination::GetServerGroup() {
     }
     server_fds.push_back(fd);
   }
+  log_debug("Connected to all servers");
 
   if (error) {
     for (auto fd : server_fds) {

@@ -86,8 +86,7 @@ static bool IsQuery(uint8_t *buffer) {
 }
 
 static std::string ExtractQuery(uint8_t *buffer) {
-  size_t size = mysql_get_byte3(buffer);
-  size_t query_size = size - kMySQLHeaderLen - 1;
+  size_t query_size = mysql_get_byte3(buffer) - 1;
   char *query = reinterpret_cast<char *>(buffer + kMySQLHeaderLen);
   return std::string(query, query_size);
 }

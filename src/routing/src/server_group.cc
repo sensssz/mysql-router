@@ -3,7 +3,8 @@
 ServerGroup::ServerGroup(const std::vector<int> &server_fds) {
   for (auto fd : server_fds) {
     server_conns_.emplace_back(fd, routing::RdmaOperations::instance());
-    ready_for_write_.push_back(true);
+    // Any positive number means ready
+    read_results_.push_back(1);
   }
 }
 
@@ -72,10 +73,92 @@ int ServerGroup::Write(uint8_t *buffer, size_t size) {
   }
 }
 
+uint8_t *ServerGroup::GetResult(int server_index, bool do_read) {
+  if (do_read) {
+    if (Recv() <= 0) {
+      return nullptr;
+    }
+  } else if (read_results_[server_index] <= 0) {
+    return nullptr;
+  }
+  return server_conns_[server_index].Buffer();
+}
+
 bool ServerGroup::SendQuery(int server_index, const std::string &query) {
-  return true;
+  uint8_t *payload = Payload();
+  payload[0] = static_cast<uint8_t>(COM_QUERY);
+  payload++;
+  memcpy(payload, query.c_str(), query.length());
+  has_outstanding_request_[server_index] = true;
+  return server_conns_[server_index].Send(query.length() + 1) > 0;
+}
+
+bool ServerGroup::IsReadyForQuery(int server_index) {
+  if (!has_outstanding_request_[server_index]) {
+    return true;
+  }
+  auto res = server_conns_[server_index].TryRecv();
+  read_results_[server_index] = res;
+  if (res != -2) {
+    has_outstanding_request_[server_index] = false;
+  }
 }
 
 bool ServerGroup::ForwardToAll(const std::string &query) {
-  return true;
+  bool error = false;
+  for (size_t i = 0; i < server_conns_.size(); i++) {
+    if (!SendQuery(i, query)) {
+      error = true;
+    } else {
+      has_outstanding_request_[server_index] = true;
+    }
+  }
+  return !error;
+}
+
+int ServerGroup::PollServers() {
+  bool response = false;
+  int responded_server = -1;
+  while (!response) {
+    for (size_t i = 0; i < server_conns_.size(); i++) {
+      ssize_t read_res = server_conns_[i].TryRecv();
+      read_results_[i] = read_res;
+      if (read_res > 0) {
+        response = true;
+        responded_server = static_cast<int>(i);
+        break;
+      } else if (read_res != -2) {
+        response = true;
+        responded_server = -1;
+        break;
+      }
+    }
+  }
+  return responded_server;
+}
+
+size_t ServerGroup::GetAvailableServer() {
+  for (size_t i = 0; i < server_conns_.size(); i++) {
+    if (!has_outstanding_request_[i]) {
+      return i;
+    }
+  }
+  bool response = false;
+  int responded_server = -1;
+  while (!response) {
+    for (size_t i = 0; i < server_conns_.size(); i++) {
+      ssize_t read_res = server_conns_[i].TryRecv();
+      read_results_[i] = read_res;
+      if (read_res > 0) {
+        response = true;
+        responded_server = static_cast<int>(i);
+        break;
+      } else if (read_res != -2) {
+        response = true;
+        responded_server = -1;
+        break;
+      }
+    }
+  }
+  return responded_server;
 }

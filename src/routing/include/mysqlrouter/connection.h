@@ -8,6 +8,8 @@
 
 class Connection {
 public:
+  static const size_t kBufferSize = kMySQLMaxPacketLen + kMySQLHeaderLen;
+
   Connection(int fd, routing::SocketOperationsBase *sock_ops);
   Connection(const Connection &other);
   ~Connection();
@@ -27,8 +29,6 @@ public:
   bool SendQuery(const std::string &query);
 
 private:
-  static const size_t kBufferSize = kMySQLMaxPacketLen + kMySQLHeaderLen;
-
   int fd_;
   uint8_t packet_number_;
   std::unique_ptr<uint8_t[]> buffer_;

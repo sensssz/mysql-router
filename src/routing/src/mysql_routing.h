@@ -35,6 +35,7 @@
 #include "plugin_config.h"
 #include "utils.h"
 #include "mysqlrouter/routing.h"
+#include "speculator/speculator.h"
 
 #include <array>
 #include <atomic>
@@ -317,6 +318,7 @@ private:
   int service_tcp_;
   /** @brief Socket descriptor of the named socket service */
   int service_named_socket_;
+  std::unique_ptr<Speculator> speculator_;
   /** @brief Destination object to use when getting next connection */
   std::unique_ptr<RouteDestination> destination_;
   /** @brief Whether we were asked to stop */

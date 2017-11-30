@@ -29,6 +29,7 @@
 #include "mysqlrouter/utils.h"
 #include "plugin_config.h"
 #include "protocol/protocol.h"
+#include "speculator/fake_speculator.h"
 
 #include <algorithm>
 #include <array>
@@ -38,6 +39,7 @@
 #include <memory>
 #include <mutex>
 #include <sstream>
+#include <unordered_map>
 
 #include <sys/types.h>
 
@@ -79,6 +81,58 @@ static int kListenQueueSize = 1024;
 static const char *kDefaultReplicaSetName = "default";
 static const int kAcceptorStopPollInterval_ms = 1000;
 
+static bool IsQuery(uint8_t *buffer) {
+  return buffer[kMySQLHeaderLen] == static_cast<uint8_t>(COM_QUERY);
+}
+
+static std::string ExtractQuery(uint8_t *buffer) {
+  size_t size = mysql_get_byte3(buffer);
+  size_t query_size = size - kMySQLHeaderLen - 1;
+  char *query = reinterpret_cast<char *>(buffer + kMySQLHeaderLen);
+  return std::string(query, query_size);
+}
+
+static std::string ToLower(const std::string &query) {
+  std::string lower = query;
+  std::transform(lower.begin(), lower.end(), std::tolower);
+  return std::move(lower);
+}
+
+static bool IsRead(const std::string &query) {
+  return ToLower(query).find("select") == 0;
+}
+
+static bool IsWrite(const std::string &query) {
+  auto lower = ToLower(query);
+  return lower.find("insert") == 0 ||
+         lower.find("update") == 0 ||
+         lower.find("delete") == 0;
+}
+
+// The reserved_server is necessary because there may be a gap between
+// checking the result has arrived and the checks below.
+static void DoSpeculation(
+  const std::string &query,
+  ServerGroup &server_group,
+  int reserved_server,
+  Speculator *speculator,
+  std::unordered_map<std::string, int> &prefetches) {
+  auto speculations = speculator->Speculate(query);
+  auto iter = speculations.begin();
+  for (size_t i = 0; i < server_group.Size(); i++) {
+    if (static_cast<int>(i) == reserved_server ||
+        !server_group.IsReadyForWrite(i)) {
+      continue;
+    }
+    server_group.SendQuery(i, *iter);
+    prefetches[*iter] = i;
+    iter++;
+    if (iter == speculations.end()) {
+      break;
+    }
+  }
+}
+
 MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
                            const Protocol::Type protocol,
                            const string &bind_address,
@@ -102,6 +156,7 @@ MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
       bind_named_socket_(named_socket),
       service_tcp_(0),
       service_named_socket_(0),
+      speculator_(new FakeSpeculator()),
       stopping_(false),
       info_active_routes_(0),
       info_handled_routes_(0),
@@ -212,6 +267,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   auto buffer_length = buffer.size();
   bool handshake_done = false;
   Connection client_connection(client, routing::SocketOperations::instance());
+  std::unordered_map<std::string, int> prefetches;
 
   auto server_group = destination_->GetServerGroup();
   if (server_group.get() == nullptr) {
@@ -269,27 +325,71 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
   int pktnr = 0;
   while (true) {
-    bytes_read = socket_operations_->read(client, &buffer.front(), buffer_length);
+    bytes_read = client_connection.Recv();
     if (bytes_read <= 0) {
       log_error("Read from client fails");
       break;
     }
-    if (server_group->Write(&buffer.front(), bytes_read) <= 0) {
-      log_error("Write to servers fails");
-      break;
-    }
-    bytes_up += bytes_read;
 
-    bytes_read = server_group->Read(&buffer.front(), buffer_length);
-    if (bytes_read <= 0) {
-      log_error("Read from servers fail");
-      break;
+    if (IsQuery(client_connection.Buffer())) {
+      std::string query = ExtractQuery(client_connection.Buffer());
+      // Ideally we want to send out all speculative queries and then
+      // check if our prediction hits for the current query. But we want
+      // to make sure that if prediction does not hit, the current query
+      // gets the first available server. Also if the prediction hits and
+      // the result has already been retrieved, then that server can be
+      // reused to process the speculative query. Therefore, we first check
+      // for prediction hit, and then check whether the result has arrived.
+      auto iter = prefetches.find(query);
+      int server_for_current_query = -1;
+      if (iter != prefetches.end()) {
+        if (server_group.IsReadyForQuery(*iter)) {
+          // Result has been received
+          auto result = server_group.GetResult(*iter);
+          auto payload_size = mysql_get_byte3(result);
+          memcpy(client_connection.Buffer(), result, payload_size + kMySQLHeaderLen);
+        } else {
+          server_for_current_query = *iter;
+        }
+      } else {
+        // Prediction not hit, send it now.
+        server_for_current_query = server_group.GetAvailableServer();
+        server_group.SendQuery(server_for_current_query, query);
+      }
+      DoSpeculation(query, server_group, server_for_current_query, speculator_.get(), prefetches);
+      // Now either wait for the result or we already have the result
+      if (server_for_current_query != -1) {
+        while (!server_group.IsReadyForQuery(server_for_current_query)) {
+          ;
+        }
+        auto result = server_group.GetResult(*iter);
+        auto payload_size = mysql_get_byte3(result);
+        memcpy(client_connection.Buffer(), result, payload_size + kMySQLHeaderLen);
+      }
+      auto payload_size = mysql_get_byte3(client_connection.Buffer());
+      if (client_connection->Send(payload_size) <= 0) {
+        log_error("Write to client fails");
+        break;
+      }
+      bytes_down += payload_size + kMySQLHeaderLen;
+    } else {
+      if (server_group->Write(client_connection.Buffer(), bytes_read) <= 0) {
+        log_error("Write to servers fails");
+        break;
+      }
+      bytes_up += bytes_read;
+
+      bytes_read = server_group->Read(client_connection.Buffer(), Connection::kBufferSize);
+      if (bytes_read <= 0) {
+        log_error("Read from servers fail");
+        break;
+      }
+      if (client_connection->Send(bytes_read - kMySQLHeaderLen) <= 0) {
+        log_error("Write to client fails");
+        break;
+      }
+      bytes_down += bytes_read;
     }
-    if (socket_operations_->write(client, &buffer.front(), bytes_read) <= 0) {
-      log_error("Write to client fails");
-      break;
-    }
-    bytes_down += bytes_read;
 
   } // while (true)
 

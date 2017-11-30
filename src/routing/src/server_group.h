@@ -12,15 +12,23 @@ public:
   ServerGroup(const std::vector<int> &server_fds);
 
   bool Authenticate(Connection *client);
+  size_t Size() {
+    return server_conns_.size();
+  }
   int Read(uint8_t *buffer, size_t size);
   int Write(uint8_t *buffer, size_t size);
+  uint8_t *GetResult(int server_index, bool do_read);
 
   bool SendQuery(int server_index, const std::string &query);
+  bool IsReadyForQuery(int server_index);
   bool ForwardToAll(const std::string &query);
+  int PollServers();
+  size_t GetAvailableServer();
 
 private:
   std::vector<Connection> server_conns_;
-  std::vector<bool> ready_for_write_;
+  std::vector<bool> has_outstanding_request_;
+  std::vector<ssize_t> read_results_;
   std::unique_ptr<MySQLSession> session_;
 };
 

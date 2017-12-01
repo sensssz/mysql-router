@@ -342,6 +342,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       if (IsWrite(query)) {
         server_group->ForwardToAll(query);
         auto first_available = server_group->GetAvailableServer();
+        std::cerr << "Got server " << first_available << std::endl;
         auto payload_size = CopyToClient(server_group->GetResult(first_available), &client_connection);
         if (client_connection.Send(payload_size) <= 0) {
           log_error("Write to client fails");

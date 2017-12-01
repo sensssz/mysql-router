@@ -22,7 +22,7 @@ public:
   bool SendQuery(size_t server_index, const std::string &query);
   bool IsReadyForQuery(size_t server_index);
   bool ForwardToAll(const std::string &query);
-  size_t GetAvailableServer();
+  int GetAvailableServer();
 
 private:
   std::vector<Connection> server_conns_;

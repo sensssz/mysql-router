@@ -118,10 +118,10 @@ bool ServerGroup::ForwardToAll(const std::string &query) {
   return !error;
 }
 
-size_t ServerGroup::GetAvailableServer() {
+int ServerGroup::GetAvailableServer() {
   for (size_t i = 0; i < server_conns_.size(); i++) {
     if (!has_outstanding_request_[i]) {
-      return i;
+      return static_cast<int>(i);
     }
   }
   bool response = false;

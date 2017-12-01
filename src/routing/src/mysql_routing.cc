@@ -401,7 +401,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         break;
       }
       log_debug("Forwarding packet back to client...");
-      if (client_connection.Send(bytes_read - kMySQLHeaderLen) <= 0) {
+      if (client_connection.Send(bytes_read) <= 0) {
         log_error("Write to client fails");
         break;
       }

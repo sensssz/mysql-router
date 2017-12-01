@@ -85,9 +85,10 @@ std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index) {
 }
 
 bool ServerGroup::SendQuery(size_t server_index, const std::string &query) {
-  size_t packet_size = kMySQLHeaderLen + 1 + query.length();
+  size_t payload_size = 1 + query.length();
+  size_t packet_size = kMySQLHeaderLen + payload_size;
   uint8_t *buffer = server_conns_[server_index].Buffer();
-  mysql_set_byte3(buffer, packet_size);
+  mysql_set_byte3(buffer, payload_size);
   buffer[kMySQLSeqOffset] = 0;
   uint8_t *payload = buffer + kMySQLHeaderLen;
   payload[0] = static_cast<uint8_t>(COM_QUERY);

@@ -132,10 +132,9 @@ static void DoSpeculation(
   }
 }
 
-static size_t CopyToClient(uint8_t *result, Connection *client) {
-  size_t payload_size = mysql_get_byte3(result);
-  memcpy(client->Buffer(), result, payload_size + kMySQLHeaderLen);
-  return payload_size;
+static size_t CopyToClient(std::pair<uint8_t*, ssize_t> &&result, Connection *client) {
+  memcpy(client->Buffer(), result.first, result.second);
+  return static_cast<size_t>(result.second);
 }
 
 MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
@@ -339,16 +338,17 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
     if (IsQuery(client_connection.Buffer())) {
       std::string query = ExtractQuery(client_connection.Buffer());
+      size_t packet_size = 0;
       if (IsWrite(query)) {
         server_group->ForwardToAll(query);
         auto first_available = server_group->GetAvailableServer();
         std::cerr << "Got server " << first_available << std::endl;
-        auto payload_size = CopyToClient(server_group->GetResult(first_available), &client_connection);
-        if (client_connection.Send(payload_size) <= 0) {
+        packet_size = CopyToClient(server_group->GetResult(first_available), &client_connection);
+        if (client_connection.Send(packet_size) <= 0) {
           log_error("Write to client fails");
           break;
         }
-        bytes_down += payload_size + kMySQLHeaderLen;
+        bytes_down += packet_size;
       } else {
         // Ideally we want to send out all speculative queries and then
         // check if our prediction hits for the current query. But we want
@@ -362,7 +362,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         if (iter != prefetches.end()) {
           if (server_group->IsReadyForQuery(iter->second)) {
             // Result has been received
-            CopyToClient(server_group->GetResult(iter->second), &client_connection);
+            packet_size = CopyToClient(server_group->GetResult(iter->second), &client_connection);
           } else {
             server_for_current_query = iter->second;
           }
@@ -377,14 +377,13 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           while (!server_group->IsReadyForQuery(server_for_current_query)) {
             ;
           }
-          CopyToClient(server_group->GetResult(server_for_current_query), &client_connection);
+          packet_size = CopyToClient(server_group->GetResult(server_for_current_query), &client_connection);
         }
-        auto payload_size = mysql_get_byte3(client_connection.Buffer());
-        if (client_connection.Send(payload_size) <= 0) {
+        if (client_connection.Send(packet_size) <= 0) {
           log_error("Write to client fails");
           break;
         }
-        bytes_down += payload_size + kMySQLHeaderLen;
+        bytes_down += packet_size;
       }
     } else {
       if (server_group->Write(client_connection.Buffer(), bytes_read) <= 0) {

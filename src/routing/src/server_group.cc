@@ -76,20 +76,24 @@ int ServerGroup::Write(uint8_t *buffer, size_t size) {
   }
 }
 
-uint8_t *ServerGroup::GetResult(size_t server_index) {
+std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index) {
   if (has_outstanding_request_[server_index] || read_results_[server_index] <= 0) {
-    return nullptr;
+    return std::make_pair(nullptr, 0);
   }
-  return server_conns_[server_index].Buffer();
+  return std::make_pair(server_conns_[server_index].Buffer(), read_results_[server_index]);
 }
 
 bool ServerGroup::SendQuery(size_t server_index, const std::string &query) {
-  uint8_t *payload = server_conns_[server_index].Payload();
+  size_t packet_size = kMySQLHeaderLen + 1 + query.length();
+  uint8_t *buffer = server_conns_[server_index].Buffer();
+  mysql_set_byte3(buffer, packet_size);
+  buffer[kMySQLSeqOffset] = 0;
+  uint8_t *payload = buffer + kMySQLHeaderLen;
   payload[0] = static_cast<uint8_t>(COM_QUERY);
   payload++;
   memcpy(payload, query.c_str(), query.length());
   has_outstanding_request_[server_index] = true;
-  return server_conns_[server_index].Send(query.length() + 1) > 0;
+  return server_conns_[server_index].Send(packet_size) > 0;
 }
 
 bool ServerGroup::IsReadyForQuery(size_t server_index) {

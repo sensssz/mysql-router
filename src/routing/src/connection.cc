@@ -30,8 +30,6 @@ ssize_t Connection::Recv() {
   if (res <= 0) {
     return res;
   }
-  size_t payload_size = mysql_get_byte3(buf_);
-  assert(res == payload_size + kMySQLHeaderLen);
   packet_number_ = buf_[kMySQLSeqOffset] + 1;
   return res;
 }
@@ -44,12 +42,9 @@ ssize_t Connection::TryRecv() {
 }
 
 ssize_t Connection::Send(size_t size) {
-  mysql_set_byte3(buf_, size);
-  buf_[kMySQLSeqOffset] = packet_number_;
-  return sock_ops_->write(fd_, buf_, size + kMySQLHeaderLen);
+  return sock_ops_->write(fd_, buf_, size);
 }
 
 ssize_t Connection::Send(uint8_t *buffer, size_t size) {
-  buffer[kMySQLSeqOffset] = packet_number_;
   return sock_ops_->write(fd_, buffer, size);
 }

@@ -31,12 +31,14 @@ bool ServerGroup::Authenticate(Connection *client) {
       return false;
     }
   }
+  log_debug("Done with authentication with all servers, sending first response back to client");
   ssize_t size = client->Send(server_conns_[0].Buffer(), server_size);
   if (size < 0) {
     log_error("Sending authentication result to client returns negative read size");
     server_conns_.clear();
     return false;
   }
+  log_debug("Result sent back to client. Authentication done");
   return true;
 }
 

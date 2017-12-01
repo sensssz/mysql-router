@@ -21,7 +21,7 @@ static void ShowBinaryData(const char *data, size_t len) {
       ss << '\\' << (int) data[i];
     }
   }
-  std::cerr << "Data is " << ss.str() << std::endl;
+  std::cerr << "Data received from backend is " << ss.str() << std::endl;
 }
 
 RdmaCommunicator::RdmaCommunicator() : cm_id_(nullptr), event_channel_(nullptr) {}
@@ -60,7 +60,7 @@ void RdmaCommunicator::OnWorkCompletion(Context *context, struct ibv_wc *wc) {
   }
   if (wc->opcode & IBV_WC_RECV) {
     size_t size = *(reinterpret_cast<size_t *>(context->recv_region));
-    std::cerr << "Response of size " << size << " received, pushing to the buffer" << std::endl;
+    // std::cerr << "Response of size " << size << " received, pushing to the buffer" << std::endl;
     if (size == kMaxPacketLen) {
       PostReceive(context);
     }

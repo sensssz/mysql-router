@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 
+#include <cassert>
 #include <cctype>
 
 using routing::SocketOperationsBase;
@@ -29,6 +30,8 @@ ssize_t Connection::Recv() {
   if (res <= 0) {
     return res;
   }
+  size_t payload_size = mysql_get_byte3(buf_);
+  assert(res == payload_size + kMySQLHeaderLen);
   packet_number_ = buf_[kMySQLSeqOffset] + 1;
   return res;
 }

@@ -330,6 +330,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
   int pktnr = 0;
   while (true) {
+    log_debug("Reading packet from the client...");
     bytes_read = client_connection.Recv();
     if (bytes_read <= 0) {
       log_error("Read from client fails");
@@ -386,21 +387,25 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         bytes_down += packet_size;
       }
     } else {
+      log_debug("Forwarding packet to the server...");
       if (server_group->Write(client_connection.Buffer(), bytes_read) <= 0) {
         log_error("Write to servers fails");
         break;
       }
       bytes_up += bytes_read;
 
+      log_debug("Reading packet from the server...");
       bytes_read = server_group->Read(client_connection.Buffer(), Connection::kBufferSize);
       if (bytes_read <= 0) {
         log_error("Read from servers fail");
         break;
       }
+      log_debug("Forwarding packet back to client...");
       if (client_connection.Send(bytes_read - kMySQLHeaderLen) <= 0) {
         log_error("Write to client fails");
         break;
       }
+      log_debug("Result sent back");
       bytes_down += bytes_read;
     }
   } // while (true)

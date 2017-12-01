@@ -139,7 +139,7 @@ response_length(char *user, uint8_t *passwd, char *dbname, const char *auth_modu
   bytes++;
 
   // the packet header
-  // bytes += 4;
+  bytes += 4;
 
   return bytes;
 }
@@ -267,7 +267,10 @@ auth_state_t send_backend_auth(MySQLSession *session, Connection *connection)
   long bytes = response_length(session->user, curr_passwd,
                                session->db, auth_plugin_name);
 
-  uint8_t *payload = connection->Payload();
+  uint8_t *buffer = connection->Buffer();
+  mysql_set_byte3(buffer, bytes - kMySQLHeaderLen);
+  buffer[kMySQLSeqOffset] = 1;
+  uint8_t *payload = buffer + kMySQLHeaderLen;
 
   // clearing data
   memset(payload, '\0', bytes);

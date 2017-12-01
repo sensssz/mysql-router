@@ -59,10 +59,12 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(Connection *client) {
       sizeof(mysql_filler_ten) + 12 + sizeof(/* mysql_last_byte */ uint8_t) + plugin_name_len +
       sizeof(/* mysql_last_byte */ uint8_t);
 
-  outbuf = client->Payload();
+  outbuf = client->Buffer();
+  mysql_set_byte3(outbuf, mysql_payload_size);
+  outbuf[kMySQLSeqOffset] = 0;
 
   // current buffer pointer
-  mysql_handshake_payload = outbuf;
+  mysql_handshake_payload = outbuf + kMySQLHeaderLen;
 
   // write protocol version
   memcpy(mysql_handshake_payload, &mysql_protocol_version, sizeof(mysql_protocol_version));
@@ -137,7 +139,7 @@ static std::unique_ptr<MySQLSession> MySQLHandshake(Connection *client) {
   *mysql_handshake_payload = 0x00;
 
   // writing data in the Client buffer queue
-  if (client->Send(mysql_payload_size) <= 0) {
+  if (client->Send(mysql_payload_size + kMySQLHeaderLen) <= 0) {
     return nullptr;
   } else {
     return std::move(session);

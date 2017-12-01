@@ -132,9 +132,9 @@ static void DoSpeculation(
   }
 }
 
-static size_t CopyToClient(std::pair<uint8_t*, ssize_t> &&result, Connection *client) {
+static size_t CopyToClient(std::pair<uint8_t*, size_t> &&result, Connection *client) {
   memcpy(client->Buffer(), result.first, result.second);
-  return static_cast<size_t>(result.second);
+  return result.second;
 }
 
 MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,

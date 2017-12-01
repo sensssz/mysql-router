@@ -132,10 +132,12 @@ int ServerGroup::GetAvailableServer() {
       read_results_[i] = read_res;
       if (read_res > 0) {
         response = true;
+        has_outstanding_request_[i] = false;
         responded_server = static_cast<int>(i);
         break;
       } else if (read_res != -2) {
         response = true;
+        has_outstanding_request_[i] = false;
         responded_server = -1;
         break;
       }

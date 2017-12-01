@@ -80,7 +80,7 @@ std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index) {
   if (has_outstanding_request_[server_index] || read_results_[server_index] <= 0) {
     return std::make_pair(nullptr, 0);
   }
-  return std::make_pair(server_conns_[server_index].Buffer()
+  return std::make_pair(server_conns_[server_index].Buffer(),
                         static_cast<size_t>(read_results_[server_index]));
 }
 

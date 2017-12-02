@@ -193,8 +193,6 @@ class RdmaOperations : public SocketOperationsBase {
 
   static RdmaOperations* instance();
 
-  RdmaOperations() : current_fd_(0) {}
-
   /** @brief Returns socket descriptor of connected MySQL server
    *
    * Returns a socket descriptor for the connection to the MySQL Server or
@@ -224,7 +222,7 @@ class RdmaOperations : public SocketOperationsBase {
  private:
   RdmaOperations(const RdmaOperations&) = delete;
   RdmaOperations operator=(const RdmaOperations&) = delete;
-  RdmaOperations() = default;
+  RdmaOperations() : current_fd_(0) {}
 
   int current_fd_;
   std::unordered_map<int, RdmaClient*> rdma_fds_;

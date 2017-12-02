@@ -116,10 +116,10 @@ static void DoSpeculation(
   int reserved_server,
   Speculator *speculator,
   std::unordered_map<std::string, int> &prefetches) {
-  if (speculation.size() == 0) {
+  auto speculations = speculator->Speculate(query);
+  if (speculations.size() == 0) {
     return;
   }
-  auto speculations = speculator->Speculate(query);
   auto iter = speculations.begin();
   for (size_t i = 0; i < server_group->Size(); i++) {
     if (static_cast<int>(i) == reserved_server ||

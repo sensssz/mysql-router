@@ -1,5 +1,6 @@
 #include "mysqlrouter/rdma_communicator.h"
 #include "mysqlrouter/status.h"
+#include "mysqlrouter/mysql_constant.h"
 
 #include <iostream>
 #include <sstream>
@@ -7,8 +8,7 @@
 #include <cctype>
 
 // 16MB
-const size_t kMaxPacketLen = (256L*256L*256L-1);
-const size_t kMaxBufferSize = kMaxPacketLen + sizeof(size_t);
+const size_t kMaxBufferSize = kMySQLMaxPacketLen + sizeof(size_t);
 // const int kMaxBufferSize = 1000;
 const int kQueueDepth = 2048;
 
@@ -61,7 +61,7 @@ void RdmaCommunicator::OnWorkCompletion(Context *context, struct ibv_wc *wc) {
   if (wc->opcode & IBV_WC_RECV) {
     size_t size = *(reinterpret_cast<size_t *>(context->recv_region));
     // std::cerr << "Response of size " << size << " received, pushing to the buffer" << std::endl;
-    if (size == kMaxPacketLen) {
+    if (size == kMySQLMaxPacketLen) {
       PostReceive(context);
     }
     ShowBinaryData(context->recv_region + sizeof(size_t), size);

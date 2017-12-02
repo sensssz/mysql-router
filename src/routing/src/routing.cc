@@ -301,7 +301,7 @@ int RdmaOperations::get_mysql_socket(TCPAddress addr, int connect_timeout, bool 
   if (!s.ok()) {
     return -1;
   }
-  int fd = current_fd_++;
+  int fd = ++current_fd_;
   rdma_fds_[fd] = client;
   return fd;
 }

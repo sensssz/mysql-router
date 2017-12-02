@@ -21,7 +21,7 @@ Connection::Connection(const Connection &other) {
   memcpy(buf_, other.buf_, kBufferSize);
 }
 
-Connection::Connection(Connection &&other) : fd_(other.fd), packet_number_(other.packet_number_),
+Connection::Connection(Connection &&other) : fd_(other.fd_), packet_number_(other.packet_number_),
     buffer_(std::move(other.buffer_)), buf_(other.buf_), sock_ops_(other.sock_ops_) {
   other.fd_ = -1;
   other.packet_number_ = 0;

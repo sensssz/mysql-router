@@ -11,7 +11,7 @@ public:
   static const size_t kBufferSize = kMySQLMaxPacketLen + kMySQLHeaderLen;
 
   Connection(int fd, routing::SocketOperationsBase *sock_ops);
-  Connection(const Connection &other);
+  Connection(const Connection &other) = delete;
   Connection(Connection &&other);
   ~Connection();
   uint8_t *Payload() {

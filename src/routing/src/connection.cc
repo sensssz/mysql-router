@@ -12,15 +12,6 @@ using routing::SocketOperationsBase;
 Connection::Connection(int fd, SocketOperationsBase *sock_ops) : fd_(fd), packet_number_(0),
     buffer_(new uint8_t[kBufferSize]), buf_(buffer_.get()), sock_ops_(sock_ops) {}
 
-Connection::Connection(const Connection &other) {
-  fd_ = other.fd_;
-  packet_number_ = other.packet_number_;
-  buffer_.reset(new uint8_t[kBufferSize]);
-  buf_ = buffer_.get();
-  sock_ops_ = other.sock_ops_;
-  memcpy(buf_, other.buf_, kBufferSize);
-}
-
 Connection::Connection(Connection &&other) : fd_(other.fd_), packet_number_(other.packet_number_),
     buffer_(std::move(other.buffer_)), buf_(other.buf_), sock_ops_(other.sock_ops_) {
   other.fd_ = -1;

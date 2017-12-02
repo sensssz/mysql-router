@@ -301,14 +301,19 @@ int RdmaOperations::get_mysql_socket(TCPAddress addr, int connect_timeout, bool 
   if (!s.ok()) {
     return -1;
   }
-  int fd = static_cast<int>(rdma_fds_.size()) + 1;
+  int fd = current_fd_++;
   rdma_fds_[fd] = client;
   return fd;
 }
 
 ssize_t RdmaOperations::write(int fd, void *buffer, size_t nbyte) {
 #ifndef _WIN32
-  return rdma_fds_[fd]->SendToServer(buffer, nbyte);
+  auto iter = rdma_fds_.find(fd);
+  if (iter != rdma_fds_.end()) {
+    return iter->second->SendToServer(buffer, nbyte);
+  } else {
+    return -1;
+  }
   // return ::write(fd, buffer, nbyte);
 #else
   return ::send(fd, reinterpret_cast<const char *>(buffer), nbyte, 0);
@@ -317,7 +322,12 @@ ssize_t RdmaOperations::write(int fd, void *buffer, size_t nbyte) {
 
 ssize_t RdmaOperations::read(int fd, void *buffer, size_t nbyte) {
 #ifndef _WIN32
-  return rdma_fds_[fd]->Read(buffer, nbyte);
+  auto iter = rdma_fds_.find(fd);
+  if (iter != rdma_fds_.end()) {
+    return iter->second->Read(buffer, nbyte);
+  } else {
+    return -1;
+  }
   // return ::read(fd, buffer, nbyte);
 #else
   return ::recv(fd, reinterpret_cast<char *>(buffer), nbyte, 0);
@@ -325,15 +335,22 @@ ssize_t RdmaOperations::read(int fd, void *buffer, size_t nbyte) {
 }
 
 bool RdmaOperations::has_data(int fd) {
-  return rdma_fds_[fd]->HasData();
+  auto iter = rdma_fds_.find(fd);
+  if (iter != rdma_fds_.end()) {
+    return iter->second->HasData();
+  } else {
+    return false;
+  }
 }
 
 void RdmaOperations::close(int fd) {
 #ifndef _WIN32
-  rdma_fds_[fd]->Disconnect();
-  delete rdma_fds_[fd];
-  rdma_fds_[fd] = nullptr;
-  // ::close(fd);
+  auto iter = rdma_fds_.find(fd);
+  if (iter != rdma_fds_.end()) {
+    iter->second->Disconnect();
+    delete iter->second;
+    rdma_fds_.erase(fd);
+  }
 #else
   ::closesocket(fd);
 #endif
@@ -341,10 +358,12 @@ void RdmaOperations::close(int fd) {
 
 void RdmaOperations::shutdown(int fd) {
 #ifndef _WIN32
-  rdma_fds_[fd]->Disconnect();
-  delete rdma_fds_[fd];
-  rdma_fds_[fd] = nullptr;
-  // ::shutdown(fd, SHUT_RDWR);
+  auto iter = rdma_fds_.find(fd);
+  if (iter != rdma_fds_.end()) {
+    iter->second->Disconnect();
+    delete iter->second;
+    rdma_fds_.erase(fd);
+  }
 #else
   ::shutdown(fd, SD_BOTH);
 #endif

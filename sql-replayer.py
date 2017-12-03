@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import json
 import sys
 import time
 
@@ -8,20 +7,12 @@ import mysql.connector
 
 from mysql.connector import errorcode
 
-def parse_query(line):
-  ''' Parse the line and return a SQL query.
-  '''
-  json_obj = json.loads(line)
-  return json_obj['sql']
-
 def load_work_trace(filename):
   ''' Load the workload trace and return all SQL queries.
   '''
-  sqls = []
   print 'Loading workload trace...'
   with open(filename, 'r') as infile:
-    for line in infile:
-      sqls.append(parse_query(line))
+    sqls = [x for x in infile if len(x) > 1]
   print 'Workload trace loaded'
   return sqls
 

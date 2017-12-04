@@ -73,8 +73,8 @@ def replay(connection, sqls):
         duration = time.time() - trx_start
         latencies.append(duration.total_seconds() * 1e6)
       else:
-        rows_count = cursor.execute(sql)
-        if rows_count > 0:
+        cursor.execute(sql)
+        if cursor.rowcount > 0:
           cursor.fetchall()
   except mysql.connector.Error as err:
     print err

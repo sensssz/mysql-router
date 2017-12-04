@@ -73,6 +73,7 @@ def replay(connection, sqls):
       latencies.append(duration.total_seconds() * 1e6)
     else:
       cursor.execute(sql)
+      cursor.fetchall()
   print '\n Replay finished'
   return latencies
 

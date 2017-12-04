@@ -57,11 +57,12 @@ def replay(connection, sqls):
   '''
   cursor = connection.cursor(buffered=True)
   print 'Replay starts'
-  i = 1
+  i = 0
   total = len(sqls)
   latencies = []
   try:
     for sql, think_time in sqls:
+      i += 1
       sys.stdout.write('\rReplay of %d/%d' % (i, total))
       if sql == 'START':
         trx_start = time.time()

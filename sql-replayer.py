@@ -35,12 +35,12 @@ def load_work_trace(filename):
   print 'Workload trace loaded'
   return sqls
 
-def connect_to_db():
+def connect_to_db(server):
   ''' Establish database connection
   '''
   print 'Connecting to database...'
   try:
-    connection = mysql.connector.connect(user='root', host='ln001', database='redmine')
+    connection = mysql.connector.connect(user='root', host=server, database='redmine')
     connection.autocommit = False
   except mysql.connector.Error as err:
     if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -89,12 +89,12 @@ def main():
   ''' Main function
   '''
   if len(sys.argv) != 3:
-    print 'Usage: ./sql-replayer.py [workload_trace] [latency_file]'
+    print 'Usage: ./sql-replayer.py [server] [workload_trace] [latency_file]'
     sys.exit(1)
-  connection = connect_to_db()
-  sqls = load_work_trace(sys.argv[1])
+  connection = connect_to_db(sys.argv[1])
+  sqls = load_work_trace(sys.argv[2])
   latencies = replay(connection, sqls)
-  dump_latencies(latencies, sys.argv[2])
+  dump_latencies(latencies, sys.argv[3])
 
 if __name__ == '__main__':
   main()

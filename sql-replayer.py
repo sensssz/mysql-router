@@ -87,7 +87,7 @@ def dump_latencies(latencies, filename):
   '''
   latency_file = open(filename, 'w')
   for latency in latencies:
-    latency_file.write('%s\n', latency)
+    latency_file.write('%s\n' % latency)
   latency_file.close()
   print 'Mean latency is %fus.' % np.mean(latencies)
 

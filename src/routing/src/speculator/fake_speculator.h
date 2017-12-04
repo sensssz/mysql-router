@@ -9,10 +9,10 @@
 class FakeSpeculator : public Speculator {
 public:
   FakeSpeculator(const std::string &filename);
-  void SkipQuery() {
+  virtual void SkipQuery() override {
     current_query_++;
   }
-  virtual std::vector<std::string> Speculate(const std::string &query, int num_speculations=3);
+  virtual std::vector<std::string> Speculate(const std::string &query, int num_speculations=2) override;
 
 private:
   std::vector<std::string> queries_;

@@ -69,7 +69,7 @@ ssize_t RdmaClient::SendToServer(void *buffer, size_t size) {
   s = PostSend(context_, size + sizeof(size));
   if (s.ok()) {
     // std::cerr << size << " bytes sent" << std::endl;
-    ShowBinaryData(reinterpret_cast<char *>(buffer), size);
+    // ShowBinaryData(reinterpret_cast<char *>(buffer), size);
     return static_cast<ssize_t>(size);
   } else {
     return -1;

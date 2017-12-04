@@ -163,7 +163,7 @@ MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
       bind_named_socket_(named_socket),
       service_tcp_(0),
       service_named_socket_(0),
-      speculator_(new FakeSpeculator()),
+      speculator_(new FakeSpeculator("/gpfs/gpfs0/groups/mozafari/jiamin/lobsters.sql")),
       stopping_(false),
       info_active_routes_(0),
       info_handled_routes_(0),
@@ -344,6 +344,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       std::string query = ExtractQuery(client_connection.Buffer());
       size_t packet_size = 0;
       if (IsWrite(query)) {
+        speculator_->SkipQuery();
         server_group->ForwardToAll(query);
         auto first_available = server_group->GetAvailableServer();
         std::cerr << "Got server " << first_available << std::endl;

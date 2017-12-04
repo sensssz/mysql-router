@@ -64,7 +64,7 @@ void RdmaCommunicator::OnWorkCompletion(Context *context, struct ibv_wc *wc) {
     if (size == kMySQLMaxPacketLen) {
       PostReceive(context);
     }
-    ShowBinaryData(context->recv_region + sizeof(size_t), size);
+    // ShowBinaryData(context->recv_region + sizeof(size_t), size);
     context->buffer.Write(context->recv_region + sizeof(size_t), size);
   }
 }

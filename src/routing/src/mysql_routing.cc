@@ -344,11 +344,13 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       std::string query = ExtractQuery(client_connection.Buffer());
       size_t packet_size = 0;
       if (IsWrite(query)) {
+        log_debug("Got write query, forward it to all servers...");
         speculator_->SkipQuery();
         server_group->ForwardToAll(query);
         auto first_available = server_group->GetAvailableServer();
-        std::cerr << "Got server " << first_available << std::endl;
+        log_debug("Got server %d to read result from", first_available);
         packet_size = CopyToClient(server_group->GetResult(first_available), &client_connection);
+        log_debug("Send results back to client");
         if (client_connection.Send(packet_size) <= 0) {
           log_error("Write to client fails");
           break;
@@ -362,28 +364,37 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         // the result has already been retrieved, then that server can be
         // reused to process the speculative query. Therefore, we first check
         // for prediction hit, and then check whether the result has arrived.
+        log_debug("Got read query");
         auto iter = prefetches.find(query);
         int server_for_current_query = -1;
         if (iter != prefetches.end()) {
+          log_debug("Prediction hits, check for result");
           if (server_group->IsReadyForQuery(iter->second)) {
             // Result has been received
+            log_debug("Result has already arrived");
             packet_size = CopyToClient(server_group->GetResult(iter->second), &client_connection);
           } else {
+            log_debug("Result is pending");
             server_for_current_query = iter->second;
           }
         } else {
           // Prediction not hit, send it now.
           server_for_current_query = server_group->GetAvailableServer();
+          log_debug("Prediction fails, execute it on server %d", server_for_current_query);
           server_group->SendQuery(server_for_current_query, query);
         }
+        log_debug("Do speculations");
         DoSpeculation(query, server_group.get(), server_for_current_query, speculator_.get(), prefetches);
         // Now either wait for the result or we already have the result
         if (server_for_current_query != -1) {
+          log_debug("Waiting for pending result");
           while (!server_group->IsReadyForQuery(server_for_current_query)) {
             ;
           }
+          log_debug("Result has arrived");
           packet_size = CopyToClient(server_group->GetResult(server_for_current_query), &client_connection);
         }
+        log_debug("Send result back to client");
         if (client_connection.Send(packet_size) <= 0) {
           log_error("Write to client fails");
           break;

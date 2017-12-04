@@ -40,7 +40,7 @@ def connect_to_db(server):
   '''
   print 'Connecting to database...'
   try:
-    connection = mysql.connector.connect(user='root', host=server, database='redmine')
+    connection = mysql.connector.connect(user='root', host=server, port=4243, database='lobsters')
     connection.autocommit = False
   except mysql.connector.Error as err:
     if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:

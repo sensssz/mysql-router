@@ -60,20 +60,23 @@ def replay(connection, sqls):
   i = 1
   total = len(sqls)
   latencies = []
-  for sql, think_time in sqls:
-    sys.stdout.write('\rReplay of %d/%d' % (i, total))
-    if sql == 'START':
-      trx_start = time.time()
-      continue
-    if think_time > 0:
-      time.sleep(think_time * 1e-6)
-    if sql == 'COMMIT':
-      connection.commit()
-      duration = time.time() - trx_start
-      latencies.append(duration.total_seconds() * 1e6)
-    else:
-      cursor.execute(sql)
-      cursor.fetchall()
+  try:
+    for sql, think_time in sqls:
+      sys.stdout.write('\rReplay of %d/%d' % (i, total))
+      if sql == 'START':
+        trx_start = time.time()
+        continue
+      if think_time > 0:
+        time.sleep(think_time * 1e-6)
+      if sql == 'COMMIT':
+        connection.commit()
+        duration = time.time() - trx_start
+        latencies.append(duration.total_seconds() * 1e6)
+      else:
+        cursor.execute(sql)
+        cursor.fetchall()
+  except mysql.connector.Error as err:
+    print err
   print '\n Replay finished'
   return latencies
 

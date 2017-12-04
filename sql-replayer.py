@@ -64,7 +64,7 @@ def replay(connection, sqls):
     for sql, think_time in sqls:
       i += 1
       sys.stdout.write('\rReplay of %d/%d' % (i, total))
-      if sql == 'START':
+      if sql == 'BEGIN':
         trx_start = time.time()
         continue
       if think_time > 0:

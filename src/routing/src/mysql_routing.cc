@@ -266,9 +266,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   // int nfds;
   // int res;
   // int error = 0;
-  size_t bytes_down = 0;
-  size_t bytes_up = 0;
-  size_t bytes_read = 0;
+  ssize_t bytes_down = 0;
+  ssize_t bytes_up = 0;
+  ssize_t bytes_read = 0;
   string extra_msg = "";
   RoutingProtocolBuffer buffer(net_buffer_length_);
   auto buffer_length = buffer.size();

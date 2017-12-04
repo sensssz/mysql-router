@@ -55,7 +55,7 @@ def connect_to_db(server):
 def replay(connection, sqls):
   ''' Replay the SQL queries.
   '''
-  cursor = connection.cursor()
+  cursor = connection.cursor(buffered=True)
   print 'Replay starts'
   i = 1
   total = len(sqls)

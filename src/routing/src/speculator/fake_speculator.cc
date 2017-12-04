@@ -30,7 +30,8 @@ std::vector<std::string> FakeSpeculator::Speculate(const std::string &query, int
     if (query == "BEGIN" || query == "COMMIT") {
       log_debug("Cannot predict BEGIN or COMMIT");
     } else {
-      speculations.push_back(queries_[current_query_]);
+      log_debug("Will make prediction hit with %s", query.c_str());
+      speculations.push_back(query);
       num_speculations--;
     }
   }

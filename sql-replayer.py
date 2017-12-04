@@ -88,7 +88,7 @@ def dump_latencies(latencies, filename):
 def main():
   ''' Main function
   '''
-  if len(sys.argv) != 3:
+  if len(sys.argv) != 4:
     print 'Usage: ./sql-replayer.py [server] [workload_trace] [latency_file]'
     sys.exit(1)
   connection = connect_to_db(sys.argv[1])

@@ -1,4 +1,5 @@
 #include "fake_speculator.h"
+#include "logger.h"
 
 #include <fstream>
 
@@ -25,6 +26,7 @@ std::vector<std::string> FakeSpeculator::Speculate(const std::string &query, int
   int rand_num = dist_(rand_gen_);
   current_query_++;
   if (rand_num <= 57) {
+    log_debug("Will make prediction hit");
     speculations.push_back(queries_[current_query_]);
     num_speculations--;
   }

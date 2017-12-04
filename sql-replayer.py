@@ -72,7 +72,7 @@ def replay(connection, sqls):
       if sql == 'COMMIT':
         connection.commit()
         duration = time.time() - trx_start
-        latencies.append(duration.total_seconds() * 1e6)
+        latencies.append(duration * 1e6)
       else:
         cursor.execute(sql)
         if cursor.rowcount > 0:

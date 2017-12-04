@@ -102,10 +102,7 @@ static bool IsRead(const std::string &query) {
 }
 
 static bool IsWrite(const std::string &query) {
-  auto lower = ToLower(query);
-  return lower.find("insert") == 0 ||
-         lower.find("update") == 0 ||
-         lower.find("delete") == 0;
+  return !IsRead(query);
 }
 
 // The reserved_server is necessary because there may be a gap between

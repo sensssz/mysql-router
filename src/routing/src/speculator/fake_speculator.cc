@@ -26,9 +26,13 @@ std::vector<std::string> FakeSpeculator::Speculate(const std::string &query, int
   int rand_num = dist_(rand_gen_);
   current_query_++;
   if (rand_num <= 57) {
-    log_debug("Will make prediction hit");
-    speculations.push_back(queries_[current_query_]);
-    num_speculations--;
+    auto &query = queries_[current_query_];
+    if (query == "BEGIN" || query == "COMMIT") {
+      log_debug("Cannot predict BEGIN or COMMIT");
+    } else {
+      speculations.push_back(queries_[current_query_]);
+      num_speculations--;
+    }
   }
   speculations.insert(speculations.end(), fake_speculations.begin(), fake_speculations.begin() + num_speculations);
 

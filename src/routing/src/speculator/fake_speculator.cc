@@ -22,25 +22,25 @@ FakeSpeculator::FakeSpeculator(const std::string &filename) : start_(false), cur
 }
 
 void FakeSpeculator::CheckBegin(const std::string &query) {
-  if (!start_ && query == 'BEGIN') {
+  if (!start_ && query == "BEGIN") {
     start_ = true;
   }
 }
 
 std::vector<std::string> FakeSpeculator::Speculate(const std::string &query, int num_speculations) {
-  if (!start_) {
-    return;
-  }
   std::vector<std::string> speculations;
+  if (!start_) {
+    return speculations;
+  }
   int rand_num = dist_(rand_gen_);
   current_query_++;
   if (rand_num <= 57) {
-    auto &query = queries_[current_query_];
-    if (query == "BEGIN" || query == "COMMIT") {
+    auto &next_query = queries_[current_query_];
+    if (next_query == "BEGIN" || next_query == "COMMIT") {
       log_debug("Cannot predict BEGIN or COMMIT");
     } else {
-      log_debug("Will make prediction hit with %s", query.c_str());
-      speculations.push_back(query);
+      log_debug("Will make prediction hit with %s", next_query.c_str());
+      speculations.push_back(next_query);
       num_speculations--;
     }
   }

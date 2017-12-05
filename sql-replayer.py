@@ -63,6 +63,7 @@ def replay(connection, sqls):
   try:
     for sql, think_time in sqls:
       i += 1
+      sql = sql.encode('')
       sys.stdout.write('\rReplay of %d/%d' % (i, total))
       if sql == 'BEGIN':
         trx_start = time.time()
@@ -75,7 +76,7 @@ def replay(connection, sqls):
         latencies.append(duration * 1e6)
       else:
         cursor.execute(sql)
-        if cursor.rowcount > 0:
+        if sql.startswith('SELECT'):
           cursor.fetchall()
   except mysql.connector.Error as err:
     print err

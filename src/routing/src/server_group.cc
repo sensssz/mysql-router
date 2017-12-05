@@ -94,6 +94,7 @@ bool ServerGroup::SendQuery(size_t server_index, const std::string &query) {
   payload[0] = static_cast<uint8_t>(COM_QUERY);
   payload++;
   memcpy(payload, query.c_str(), query.length());
+  payload[query.length()] = 0;
   has_outstanding_request_[server_index] = true;
   return server_conns_[server_index].Send(packet_size) > 0;
 }

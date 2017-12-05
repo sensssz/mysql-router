@@ -339,6 +339,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
     if (IsQuery(client_connection.Buffer())) {
       std::string query = ExtractQuery(client_connection.Buffer());
+      speculator_->CheckBegin(query);
       log_debug("Query is %s", query.c_str());
       size_t packet_size = 0;
       if (IsWrite(query)) {

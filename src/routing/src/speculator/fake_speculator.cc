@@ -9,7 +9,7 @@ static std::vector<std::string> fake_speculations{
   "SELECT  `keystores`.* FROM `keystores`  WHERE `keystores`.`key` = 'user:2:unread_messages'  ORDER BY `keystores`.`key` ASC LIMIT 1"
 };
 
-FakeSpeculator::FakeSpeculator(const std::string &filename) : current_query_(0), dist_(1, 100) {
+FakeSpeculator::FakeSpeculator(const std::string &filename) : start_(false), current_query_(0), dist_(1, 100) {
   std::ifstream infile(filename);
   if (infile.fail()) {
     return;
@@ -21,7 +21,16 @@ FakeSpeculator::FakeSpeculator(const std::string &filename) : current_query_(0),
   }
 }
 
+void FakeSpeculator::CheckBegin(const std::string &query) {
+  if (!start_ && query == 'BEGIN') {
+    start_ = true;
+  }
+}
+
 std::vector<std::string> FakeSpeculator::Speculate(const std::string &query, int num_speculations) {
+  if (!start_) {
+    return;
+  }
   std::vector<std::string> speculations;
   int rand_num = dist_(rand_gen_);
   current_query_++;

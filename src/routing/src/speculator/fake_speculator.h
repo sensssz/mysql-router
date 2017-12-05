@@ -9,13 +9,17 @@
 class FakeSpeculator : public Speculator {
 public:
   FakeSpeculator(const std::string &filename);
+  virtual void CheckBegin(const std::string &query) override;
   virtual void SkipQuery() override {
-    current_query_++;
+    if (start_) {
+      current_query_++;
+    }
   }
   virtual std::vector<std::string> Speculate(const std::string &query, int num_speculations=2) override;
 
 private:
   std::vector<std::string> queries_;
+  bool start_;
   size_t current_query_;
   std::default_random_engine rand_gen_;
   std::uniform_int_distribution<int> dist_;

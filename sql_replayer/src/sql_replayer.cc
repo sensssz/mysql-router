@@ -76,6 +76,7 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
     std::cout << "# ERR: " << e.what();
     std::cout << " (MySQL error code: " << e.getErrorCode();
     std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+    conn = nullptr;
   }
   return std::unique_ptr<sql::Connection>(conn);
 }
@@ -112,7 +113,7 @@ std::vector<long> Replay(sql::Connection *conn,
       }
     }
   } catch (sql::SQLException &e) {
-    std::cout << "# ERR: " << e.what();
+    std::cout << "\n# ERR: " << e.what();
     std::cout << " (MySQL error code: " << e.getErrorCode();
     std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
   }

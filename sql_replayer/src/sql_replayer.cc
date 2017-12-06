@@ -95,14 +95,15 @@ std::vector<long> Replay(sql::Connection *conn,
       if (query.second > 0) {
         std::this_thread::sleep_for(std::chrono::microseconds(query.second));
       }
-      if (query.first == "BEGIN") {
-        trx_start = std::chrono::high_resolution_clock::now();
-      } else if (query.first == "COMMIT") {
+      if (query.first == "COMMIT") {
         conn->commit();
         auto trx_end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(trx_end - trx_start);
         latencies.push_back(duration.count());
       } else {
+        if (query.first == "BEGIN") {
+          trx_start = std::chrono::high_resolution_clock::now();
+        }
         bool is_select = stmt->execute(query.first);
         if (is_select) {
           auto res = stmt->getResultSet();

@@ -20,24 +20,24 @@ namespace {
 
 namespace rjson = rapidjson;
 
-std::pair<std::string, double> ParseQuery(const std::string &line) {
+std::pair<std::string, long> ParseQuery(const std::string &line) {
   rjson::Document doc;
   doc.Parse(line);
   std::string sql = doc["sql"].GetString();
-  double timestamp = doc["sql"].GetDouble();
+  long timestamp = static_cast<long>(doc["sql"].GetDouble());
   return std::make_pair(std::move(sql), timestamp);
 }
 
-std::vector<std::pair<std::string, double>> LoadWorkloadTrace(const std::string &file) {
-  std::vector<std::pair<std::string, double>> res;
-  double prev_timestamp = 0;
+std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &file) {
+  std::vector<std::pair<std::string, long>> res;
+  long prev_timestamp = 0;
   std::cout << "Loading workload trace..." << std::endl;
   std::ifstream infile(file);
   if (infile.fail()) {
     return std::move(res);
   }
   std::string line;
-  double think_time = 0;
+  long think_time = 0;
   while (!infile.eof()) {
     std::getline(infile, line);
     if (line.length() <= 1) {
@@ -66,8 +66,17 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
   connection_properties["port"] = 4243;
   connection_properties["OPT_RECONNECT"] = true;
   std::cout << "Connecting to database..." << std::endl;
+  sql::Connection *conn = nullptr;
   try {
-    auto conn = driver->connect(connection_properties);
+    conn = driver->connect(connection_properties);
+    if (!conn->IsValid()) {
+      std::cout << "Connection fails" << std::endl;
+      delete conn;
+      conn = nullptr;
+    } else {
+      std::cout << "Connection established" << std::endl;
+      conn->setAutocommit(false);
+    }
   } catch (sql::SQLException &e) {
     std::cout << "# ERR: SQLException in " << __FILE__;
     std::cout << "(" << __FUNCTION__ << ") on line " »
@@ -76,19 +85,11 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
     std::cout << " (MySQL error code: " << e.getErrorCode();
     std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
   }
-  if (!conn->IsValid()) {
-    std::cout << "Connection fails" << std::endl;
-    delete conn;
-    return nullptr;
-  } else {
-    std::cout << "Connection established" << std::endl;
-    conn->setAutocommit(false);
-    return std::unique_ptr<sql::Connection>(conn);
-  }
+  return std::unique_ptr<sql::Connection>(conn);
 }
 
 std::vector<long> Replay(sql::Connection *conn,
-  std::vector<std::pair<std::string, double>> &&trace) {
+  std::vector<std::pair<std::string, long>> &&trace) {
   std::cout << "Replay starts" << std::endl;
   auto total = trace.size();
   std::vector<long> latencies;
@@ -156,6 +157,6 @@ int main(int argc, char *argv[]) {
   auto conn = std::move(::ConnectToDb(server));
   auto trace = ::LoadWorkloadTrace(workload_file);
   auto latencies = ::Replay(conn.get(), std::move(trace));
-  ::DumpLatencies(latencies, latency_file);
+  ::DumpLatencies(std::move(latencies), latency_file);
   return 0;
 }

@@ -103,8 +103,9 @@ std::vector<long> Replay(sql::Connection *conn,
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(trx_end - trx_start);
         latencies.push_back(duration.count());
       } else {
-        auto res = stmt->executeQuery(query.first);
-        if (res != nullptr) {
+        bool is_select = stmt->execute(query.first);
+        if (is_select) {
+          auto res = stmt->getResultSet();
           while (res->next()) {
             ;
           }

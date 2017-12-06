@@ -91,7 +91,7 @@ std::vector<long> Replay(sql::Connection *conn,
   try {
     for (size_t i = 0; i < total; i++) {
       auto &query = trace[i];
-      std::cout << "\rReplay of " << i + 1 << "/" << total;
+      std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
       if (query.second > 0) {
         std::this_thread::sleep_for(std::chrono::microseconds(query.second));
       }

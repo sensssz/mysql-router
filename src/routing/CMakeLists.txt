@@ -106,6 +106,8 @@ file(GLOB routing_headers include/mysqlrouter/*.h)
 install(FILES ${routing_headers}
   DESTINATION "include/mysql/${HARNESS_NAME}")
 
+add_subdirectory(sql_replayer)
+
 if(ENABLE_TESTS)
   add_subdirectory(tests/)
 endif()

@@ -22,7 +22,7 @@ namespace rjson = rapidjson;
 
 std::pair<std::string, long> ParseQuery(const std::string &line) {
   rjson::Document doc;
-  doc.Parse(line);
+  doc.Parse(line.c_str());
   std::string sql = doc["sql"].GetString();
   long timestamp = static_cast<long>(doc["sql"].GetDouble());
   return std::make_pair(std::move(sql), timestamp);
@@ -75,12 +75,9 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
       conn = nullptr;
     } else {
       std::cout << "Connection established" << std::endl;
-      conn->setAutocommit(false);
+      conn->setAutoCommit(false);
     }
   } catch (sql::SQLException &e) {
-    std::cout << "# ERR: SQLException in " << __FILE__;
-    std::cout << "(" << __FUNCTION__ << ") on line " »
-      << __LINE__ << endl;
     std::cout << "# ERR: " << e.what();
     std::cout << " (MySQL error code: " << e.getErrorCode();
     std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;

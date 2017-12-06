@@ -17,7 +17,7 @@
 
 namespace {
 
-using namespace rjson = rapidjson;
+namespace rjson = rapidjson;
 
 std::pair<std::string, double> ParseQuery(const std::string &line) {
   rjson::Document doc;

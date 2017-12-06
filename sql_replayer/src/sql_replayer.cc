@@ -12,6 +12,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -55,7 +56,7 @@ std::vector<std::pair<std::string, double>> LoadWorkloadTrace(const std::string 
   return std::move(res);
 }
 
-std::unique<sql::Connection> ConnectToDb(const std::string &server) {
+std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
   auto driver = sql::mysql::get_mysql_driver_instance();
   sql::ConnectOptionsMap connection_properties;
   connection_properties["hostName"] = server;
@@ -94,17 +95,17 @@ std::vector<long> Replay(sql::Connection *conn,
   std::chrono::high_resolution_clock::time_point trx_start;
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
   try {
-    for (auto i = 0; i < total; i++) {
+    for (size_t i = 0; i < total; i++) {
       auto &query = trace[i];
       std::cout << "\rReplay of " << i + 1 << "/" << total;
       if (query.second > 0) {
-        std::this_thread::sleep(std::chrono::microseconds(query.second));
+        std::this_thread::sleep_for(std::chrono::microseconds(query.second));
       }
       if (query.first == "BEGIN") {
-        trx_start = std::high_resolution_clock::now();
+        trx_start = std::chrono::high_resolution_clock::now();
       } else if (query.first == "COMMIT") {
         conn->commit();
-        auto trx_end = std::high_resolution_clock::now();
+        auto trx_end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(trx_end - trx_start);
         latencies.push_back(duration.count());
       } else {
@@ -112,14 +113,12 @@ std::vector<long> Replay(sql::Connection *conn,
       }
     }
   } catch (sql::SQLException &e) {
-    std::cout << "# ERR: SQLException in " << __FILE__;
-    std::cout << "(" << __FUNCTION__ << ") on line " »
-      << __LINE__ << endl;
     std::cout << "# ERR: " << e.what();
     std::cout << " (MySQL error code: " << e.getErrorCode();
     std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
   }
   std::cout << "\nReplay finished." << std::endl;
+  return std::move(latencies);
 }
 
 double Mean(std::vector<long> &latencies) {
@@ -130,7 +129,7 @@ double Mean(std::vector<long> &latencies) {
   double i = 1;
   for (auto latency : latencies) {
     mean == (latency - mean) / i;
-    t++;
+    i++;
   }
   return mean;
 }
@@ -154,9 +153,9 @@ int main(int argc, char *argv[]) {
   std::string server(argv[1]);
   std::string workload_file(argv[2]);
   std::string latency_file(argv[3]);
-  auto conn = std::move(ConnectToDb(server));
-  auto trace = LoadWorkloadTrace(workload_file);
-  auto latencies = Replay(conn.get(), std::move(trace));
-  DumpLatencies(latencies, latency_file);
+  auto conn = std::move(::ConnectToDb(server));
+  auto trace = ::LoadWorkloadTrace(workload_file);
+  auto latencies = ::Replay(conn.get(), std::move(trace));
+  ::DumpLatencies(latencies, latency_file);
   return 0;
 }

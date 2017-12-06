@@ -58,22 +58,18 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &f
 
 std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
   auto driver = sql::mysql::get_mysql_driver_instance();
-  sql::ConnectOptionsMap connection_properties;
-  connection_properties["hostName"] = server;
-  connection_properties["userName"] = "root";
-  // connection_properties["password"] = "";
-  connection_properties["schema"] = "lobsters";
-  connection_properties["port"] = 4243;
+  std::string url = server + ":4243";
   std::cout << "Connecting to database..." << std::endl;
   sql::Connection *conn = nullptr;
   try {
-    conn = driver->connect(connection_properties);
+    conn = driver->connect(url, "root", "");
     if (!conn->isValid()) {
       std::cout << "Connection fails" << std::endl;
       delete conn;
       conn = nullptr;
     } else {
       std::cout << "Connection established" << std::endl;
+      conn->setSchema("lobsters");
       conn->setAutoCommit(false);
     }
   } catch (sql::SQLException &e) {
@@ -106,7 +102,13 @@ std::vector<long> Replay(sql::Connection *conn,
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(trx_end - trx_start);
         latencies.push_back(duration.count());
       } else {
-        stmt->execute(query.first);
+        auto res = stmt->execute(query.first);
+        if (res != nullptr) {
+          while (res->next()) {
+            ;
+          }
+          delete res;
+        }
       }
     }
   } catch (sql::SQLException &e) {

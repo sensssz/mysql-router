@@ -106,11 +106,7 @@ std::vector<long> Replay(sql::Connection *conn,
         }
         bool is_select = stmt->execute(query.first);
         if (is_select) {
-          auto res = stmt->getResultSet();
-          while (res->next()) {
-            ;
-          }
-          delete res;
+          delete stmt->getResultSet();
         }
       }
     }

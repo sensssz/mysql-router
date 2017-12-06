@@ -69,6 +69,8 @@ include(cmake/compile_flags.cmake)
 include(cmake/protobuf.cmake)
 MYSQL_CHECK_PROTOBUF()
 
+add_subdirectory(sql_replayer)
+
 # Enable testing
 if(ENABLE_TESTS)
   enable_testing()

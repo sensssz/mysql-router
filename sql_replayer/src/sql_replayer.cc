@@ -24,7 +24,7 @@ std::pair<std::string, long> ParseQuery(const std::string &line) {
   rjson::Document doc;
   doc.Parse(line.c_str());
   std::string sql = doc["sql"].GetString();
-  long timestamp = static_cast<long>(doc["sql"].GetDouble());
+  long timestamp = static_cast<long>(doc["time"].GetDouble());
   return std::make_pair(std::move(sql), timestamp);
 }
 
@@ -61,10 +61,9 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
   sql::ConnectOptionsMap connection_properties;
   connection_properties["hostName"] = server;
   connection_properties["userName"] = "root";
-  connection_properties["password"] = "";
+  // connection_properties["password"] = "";
   connection_properties["schema"] = "lobsters";
   connection_properties["port"] = 4243;
-  connection_properties["OPT_RECONNECT"] = true;
   std::cout << "Connecting to database..." << std::endl;
   sql::Connection *conn = nullptr;
   try {
@@ -152,6 +151,9 @@ int main(int argc, char *argv[]) {
   std::string workload_file(argv[2]);
   std::string latency_file(argv[3]);
   auto conn = std::move(::ConnectToDb(server));
+  if (conn.get() == nullptr) {
+    exit(EXIT_FAILURE);
+  }
   auto trace = ::LoadWorkloadTrace(workload_file);
   auto latencies = ::Replay(conn.get(), std::move(trace));
   ::DumpLatencies(std::move(latencies), latency_file);

@@ -157,7 +157,7 @@ int ServerGroup::GetAvailableServer() {
 void ServerGroup::WaitForServer(size_t server_index) {
   auto &conn = server_conns_[server_index];
   while (has_outstanding_request_[server_index]) {
-    auto read_res = conn.TryRead();
+    auto read_res = conn.TryRecv();
     read_results_[server_index] = read_res;
     if (read_res != -2) {
       has_outstanding_request_[server_index] = false;

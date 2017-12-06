@@ -69,7 +69,7 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
   sql::Connection *conn = nullptr;
   try {
     conn = driver->connect(connection_properties);
-    if (!conn->IsValid()) {
+    if (!conn->isValid()) {
       std::cout << "Connection fails" << std::endl;
       delete conn;
       conn = nullptr;

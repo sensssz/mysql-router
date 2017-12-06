@@ -98,7 +98,8 @@ static std::string ToLower(const std::string &query) {
 }
 
 static bool IsRead(const std::string &query) {
-  return ToLower(query).find("select") == 0;
+  auto lower = ToLower(query);
+  return lower.find("select") == 0 || lower.find("show") == 0;
 }
 
 static bool IsWrite(const std::string &query) {

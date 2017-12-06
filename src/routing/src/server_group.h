@@ -26,6 +26,8 @@ public:
   int GetAvailableServer();
 
 private:
+  void WaitForServer(size_t server_index);
+
   std::vector<Connection> server_conns_;
   std::vector<bool> has_outstanding_request_;
   std::vector<ssize_t> read_results_;

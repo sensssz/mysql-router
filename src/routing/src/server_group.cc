@@ -116,6 +116,7 @@ bool ServerGroup::IsReadyForQuery(size_t server_index) {
 bool ServerGroup::ForwardToAll(const std::string &query) {
   bool error = false;
   for (size_t i = 0; i < server_conns_.size(); i++) {
+    WaitForServer(i);
     if (!SendQuery(i, query)) {
       error = true;
     } else {
@@ -151,4 +152,16 @@ int ServerGroup::GetAvailableServer() {
     }
   }
   return responded_server;
+}
+
+void ServerGroup::WaitForServer(size_t server_index) {
+  auto &conn = server_conns_[server_index];
+  while (has_outstanding_request_[server_index]) {
+    auto read_res = conn.TryRead();
+    read_results_[server_index] = read_res;
+    if (read_res != -2) {
+      has_outstanding_request_[server_index] = false;
+      return;
+    }
+  }
 }

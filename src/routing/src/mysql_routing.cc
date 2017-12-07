@@ -347,6 +347,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         log_debug("Got write query, forward it to all servers...");
         speculator_->SkipQuery();
         server_group->ForwardToAll(query);
+        log_debug("Query forwarded to all servers, waiting for one of them to be available");
         auto first_available = server_group->GetAvailableServer();
         log_debug("Got server %d to read result from", first_available);
         packet_size = CopyToClient(server_group->GetResult(first_available), &client_connection);

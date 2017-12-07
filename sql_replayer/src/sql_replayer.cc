@@ -88,32 +88,39 @@ std::vector<long> Replay(sql::Connection *conn,
   std::vector<long> latencies;
   std::chrono::high_resolution_clock::time_point trx_start;
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
-  try {
-    for (size_t i = 0; i < total; i++) {
-      auto &query = trace[i];
-      std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
-      if (query.second > 0) {
-        std::this_thread::sleep_for(std::chrono::microseconds(query.second));
+  for (size_t i = 0; i < total; i++) {
+    auto &query = trace[i];
+    std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
+    auto qsize = query.first.size();
+    if (qsize > 6000) {
+      std::cout << query.first.substr(qsize-101, 100) << std::endl;
+    }
+    if (query.second > 0) {
+      std::this_thread::sleep_for(std::chrono::microseconds(query.second));
+    }
+    if (query.first == "COMMIT") {
+      conn->commit();
+      auto trx_end = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::microseconds>(trx_end - trx_start);
+      latencies.push_back(duration.count());
+    } else {
+      if (query.first == "BEGIN") {
+        trx_start = std::chrono::high_resolution_clock::now();
       }
-      if (query.first == "COMMIT") {
-        conn->commit();
-        auto trx_end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(trx_end - trx_start);
-        latencies.push_back(duration.count());
-      } else {
-        if (query.first == "BEGIN") {
-          trx_start = std::chrono::high_resolution_clock::now();
-        }
+      try {
         bool is_select = stmt->execute(query.first);
         if (is_select) {
           delete stmt->getResultSet();
         }
+      } catch (sql::SQLException &e) {
+        std::cout << "\n# ERR: " << e.what();
+        std::cout << " (MySQL error code: " << e.getErrorCode();
+        std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+        if (e.getErrorCode() != 1062) {
+          break;
+        }
       }
     }
-  } catch (sql::SQLException &e) {
-    std::cout << "\n# ERR: " << e.what();
-    std::cout << " (MySQL error code: " << e.getErrorCode();
-    std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
   }
   std::cout << "\nReplay finished." << std::endl;
   return std::move(latencies);

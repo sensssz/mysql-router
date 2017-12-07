@@ -280,7 +280,7 @@ auth_state_t send_backend_auth(MySQLSession *session, Connection *connection)
 
   // set now the max-packet size
   payload += 4;
-  mysql_set_byte4(payload, 16777216);
+  mysql_set_byte4(payload, kMySQLMaxPacketLen);
 
   // set the charset
   payload += 4;

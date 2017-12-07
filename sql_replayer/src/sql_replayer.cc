@@ -90,8 +90,8 @@ std::vector<long> Replay(sql::Connection *conn,
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
   for (size_t i = 0; i < total; i++) {
     auto &query = trace[i];
-    std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
     auto qsize = query.first.size();
+    std::cout << "\rReplay of " << i + 1 << "/" << total << " " << qsize << std::flush;
     if (qsize > 6000) {
       std::cout << query.first.substr(qsize-101, 100) << std::endl;
     }
@@ -145,7 +145,7 @@ void DumpLatencies(std::vector<long> &&latencies, const std::string &file) {
     latency_file << latency << std::endl;
   }
   latency_file.close();
-  std::cout << "Mean latency is " << Mean(latencies) << "us" << std::endl;
+  std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " transactions" << std::endl;
 }
 
 } // namespace

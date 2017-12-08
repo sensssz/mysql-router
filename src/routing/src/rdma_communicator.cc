@@ -24,6 +24,16 @@ static void ShowBinaryData(const char *data, size_t len) {
   std::cerr << "Data received from backend is " << ss.str() << std::endl;
 }
 
+static void Retry(Context *context, bool is_recv) {
+  if (is_recv) {
+    RdmaCommunicator::PostReceive(context);
+    return;
+  }
+  size_t size = *(reinterpret_cast<size_t *>(context->recv_region));
+  RdmaCommunicator::PostSend(context, size + sizeof(size_t));
+  return;
+}
+
 RdmaCommunicator::RdmaCommunicator() : cm_id_(nullptr), event_channel_(nullptr) {}
 
 Status RdmaCommunicator::OnConnection(struct rdma_cm_id *id) {
@@ -56,9 +66,7 @@ Status RdmaCommunicator::OnEvent(struct rdma_cm_event *event) {
 void RdmaCommunicator::OnWorkCompletion(Context *context, struct ibv_wc *wc) {
   if (wc->status != IBV_WC_SUCCESS) {
     std::cerr << "OnWorkCompletion: status is not success: " << ibv_wc_status_str(wc->status) << std::endl;
-    if (wc->opcode & IBV_WC_RECV) {
-      PostReceive(context);
-    }
+    Retry(context);
     return;
   }
   if (wc->opcode & IBV_WC_RECV) {

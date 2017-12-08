@@ -66,7 +66,7 @@ Status RdmaCommunicator::OnEvent(struct rdma_cm_event *event) {
 void RdmaCommunicator::OnWorkCompletion(Context *context, struct ibv_wc *wc) {
   if (wc->status != IBV_WC_SUCCESS) {
     std::cerr << "OnWorkCompletion: status is not success: " << ibv_wc_status_str(wc->status) << std::endl;
-    Retry(context);
+    Retry(context, wc->opcode & IBV_WC_RECV);
     return;
   }
   if (wc->opcode & IBV_WC_RECV) {

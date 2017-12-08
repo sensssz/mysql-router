@@ -133,7 +133,7 @@ double Mean(std::vector<long> &latencies) {
   double mean = 0;
   double i = 1;
   for (auto latency : latencies) {
-    mean == (latency - mean) / i;
+    mean += (latency - mean) / i;
     i++;
   }
   return mean;

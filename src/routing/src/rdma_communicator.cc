@@ -72,9 +72,26 @@ static bool ResetQp(Context *context) {
   memset(&attr, 0, sizeof(attr));
 
   attr.qp_state = IBV_QPS_RESET;
-
   if (ibv_modify_qp(context->queue_pair, &attr, IBV_QP_STATE)) {
     std::cerr <<  "Failed to modify QP to RESET" << std::endl;
+    return false;
+  }
+
+  attr.qp_state = IBV_QPS_INIT;
+  if (ibv_modify_qp(context->queue_pair, &attr, IBV_QP_STATE)) {
+    std::cerr <<  "Failed to modify QP to INIT" << std::endl;
+    return false;
+  }
+
+  attr.qp_state = IBV_QPS_RTR;
+  if (ibv_modify_qp(context->queue_pair, &attr, IBV_QP_STATE)) {
+    std::cerr <<  "Failed to modify QP to RTR" << std::endl;
+    return false;
+  }
+
+  attr.qp_state = IBV_QPS_RTS;
+  if (ibv_modify_qp(context->queue_pair, &attr, IBV_QP_STATE)) {
+    std::cerr <<  "Failed to modify QP to RTS" << std::endl;
     return false;
   }
   return true;

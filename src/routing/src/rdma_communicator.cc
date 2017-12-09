@@ -34,6 +34,52 @@ static void Retry(Context *context, bool is_recv) {
   return;
 }
 
+static void ShowQpState(Context *context) {
+  struct ibv_qp_attr attr;
+  struct ibv_qp_init_attr init_attr;
+  if (!ibv_query_qp(context->queue_pair, &attr, IBV_QP_STATE, &init_attr)) {
+    switch (attr.qp_state) {
+    case IBV_QPS_RESET:
+      std::cerr << "QP state is IBV_QPS_RESET" << std::endl;
+      break;
+    case IBV_QPS_INIT:
+      std::cerr << "QP state is IBV_QPS_INIT" << std::endl;
+      break;
+    case IBV_QPS_RTR:
+      std::cerr << "QP state is IBV_QPS_RTR" << std::endl;
+      break;
+    case IBV_QPS_RTS:
+      std::cerr << "QP state is IBV_QPS_RTS" << std::endl;
+      break;
+    case IBV_QPS_SQD:
+      std::cerr << "QP state is IBV_QPS_SQD" << std::endl;
+      break;
+    case IBV_QPS_SQE:
+      std::cerr << "QP state is IBV_QPS_SQE" << std::endl;
+      break;
+    case IBV_QPS_ERR:
+      std::cerr << "QP state is IBV_QPS_ERR" << std::endl;
+      break;
+    }
+  } else {
+    std::cerr << "Error retrieving QP state" << std::endl;
+  }
+}
+
+static bool ResetQp(Context *context) {
+  struct ibv_qp_attr attr;
+
+  memset(&attr, 0, sizeof(attr));
+
+  attr.qp_state = IBV_QPS_RESET;
+
+  if (ibv_modify_qp(context->queue_pair, &attr, IBV_QP_STATE)) {
+    std::cerr <<  "Failed to modify QP to RESET" << std::endl;
+    return false;
+  }
+  return true;
+}
+
 RdmaCommunicator::RdmaCommunicator() : cm_id_(nullptr), event_channel_(nullptr) {}
 
 Status RdmaCommunicator::OnConnection(struct rdma_cm_id *id) {
@@ -66,6 +112,9 @@ Status RdmaCommunicator::OnEvent(struct rdma_cm_event *event) {
 void RdmaCommunicator::OnWorkCompletion(Context *context, struct ibv_wc *wc) {
   if (wc->status != IBV_WC_SUCCESS) {
     std::cerr << "OnWorkCompletion: status is not success: " << ibv_wc_status_str(wc->status) << std::endl;
+    if (ResetQp(context)) {
+      Retry(context, wc->opcode & IBV_WC_RECV);
+    }
     return;
   }
   if (wc->opcode & IBV_WC_RECV) {

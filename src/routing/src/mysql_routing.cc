@@ -356,7 +356,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         log_debug("Query forwarded to all servers, waiting for one of them to be available");
         auto first_available = server_group->GetAvailableServer();
         log_debug("Got server %d to read result from", first_available);
-        if (first_available <= 0) {
+        if (first_available < 0) {
           log_error("Failed to get available server");
           break;
         }
@@ -392,7 +392,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           // Prediction not hit, send it now.
           server_for_current_query = server_group->GetAvailableServer();
           log_debug("Prediction fails, execute it on server %d", server_for_current_query);
-          if (server_for_current_query <= 0) {
+          if (server_for_current_query < 0) {
             log_error("Failed to get available server");
             break;
           }

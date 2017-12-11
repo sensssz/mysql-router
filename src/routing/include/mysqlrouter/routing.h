@@ -125,6 +125,7 @@ class SocketOperationsBase {
   virtual int get_mysql_socket(mysqlrouter::TCPAddress addr, int connect_timeout, bool log = true) noexcept = 0;
   virtual ssize_t write(int  fd, void *buffer, size_t nbyte) = 0;
   virtual ssize_t read(int fd, void *buffer, size_t nbyte) = 0;
+  virtual bool has_error(int fd) = 0;
   virtual bool has_data(int fd) = 0;
   virtual void close(int fd) = 0;
   virtual void shutdown(int fd) = 0;
@@ -171,6 +172,11 @@ class SocketOperations : public SocketOperationsBase {
   /** @brief Thin wrapper around socket library read() */
   ssize_t read(int fd, void *buffer, size_t nbyte) override;
 
+  /** @brief Check whether the connection is in error state */
+  bool has_error(int fd) override {
+    return false;
+  }
+
   /** @brief Check whether the connection has data to read */
   bool has_data(int fd) override;
 
@@ -210,6 +216,9 @@ class RdmaOperations : public SocketOperationsBase {
 
   /** @brief Thin wrapper around RDMA library read() */
   ssize_t read(int fd, void *buffer, size_t nbyte) override;
+
+  /** @brief Check whether the connection is in error state */
+  bool has_error(int fd) override;
 
   /** @brief Check whether the connection has data to read */
   bool has_data(int fd) override;

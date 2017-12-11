@@ -334,6 +334,15 @@ ssize_t RdmaOperations::read(int fd, void *buffer, size_t nbyte) {
 #endif
 }
 
+bool RdmaOperations::has_error(int fd) {
+  auto iter = rdma_fds_.find(fd);
+  if (iter != rdma_fds_.end()) {
+    return iter->second->HasError();
+  } else {
+    return false;
+  }
+}
+
 bool RdmaOperations::has_data(int fd) {
   auto iter = rdma_fds_.find(fd);
   if (iter != rdma_fds_.end()) {

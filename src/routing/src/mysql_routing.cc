@@ -108,7 +108,7 @@ static bool IsWrite(const std::string &query) {
 
 // The reserved_server is necessary because there may be a gap between
 // checking the result has arrived and the checks below.
-static void DoSpeculation(
+static bool DoSpeculation(
   const std::string &query,
   ServerGroup *server_group,
   int reserved_server,
@@ -116,7 +116,7 @@ static void DoSpeculation(
   std::unordered_map<std::string, int> &prefetches) {
   auto speculations = speculator->Speculate(query);
   if (speculations.size() == 0) {
-    return;
+    return true;
   }
   auto iter = speculations.begin();
   for (size_t i = 0; i < server_group->Size(); i++) {
@@ -124,13 +124,16 @@ static void DoSpeculation(
         !server_group->IsReadyForQuery(i)) {
       continue;
     }
-    server_group->SendQuery(i, *iter);
+    if (!server_group->SendQuery(i, *iter)) {
+      return false;
+    }
     prefetches[*iter] = static_cast<int>(i);
     iter++;
     if (iter == speculations.end()) {
       break;
     }
   }
+  return true;
 }
 
 static size_t CopyToClient(std::pair<uint8_t*, size_t> &&result, Connection *client) {
@@ -346,10 +349,17 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       if (IsWrite(query)) {
         log_debug("Got write query, forward it to all servers...");
         speculator_->SkipQuery();
-        server_group->ForwardToAll(query);
+        if (!server_group->ForwardToAll(query)) {
+          log_error("Failed to forward query to servers");
+          break;
+        }
         log_debug("Query forwarded to all servers, waiting for one of them to be available");
         auto first_available = server_group->GetAvailableServer();
         log_debug("Got server %d to read result from", first_available);
+        if (first_available <= 0) {
+          log_error("Failed to get available server");
+          break;
+        }
         packet_size = CopyToClient(server_group->GetResult(first_available), &client_connection);
         log_debug("Send results back to client");
         if (client_connection.Send(packet_size) <= 0) {
@@ -382,10 +392,21 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           // Prediction not hit, send it now.
           server_for_current_query = server_group->GetAvailableServer();
           log_debug("Prediction fails, execute it on server %d", server_for_current_query);
-          server_group->SendQuery(server_for_current_query, query);
+          if (server_for_current_query <= 0) {
+            log_error("Failed to get available server");
+            break;
+          }
+          if (!server_group->SendQuery(server_for_current_query, query)) {
+            log_error("Failed to send query to server");
+            break;
+          }
         }
         log_debug("Do speculations");
-        DoSpeculation(query, server_group.get(), server_for_current_query, speculator_.get(), prefetches);
+        if (!DoSpeculation(query, server_group.get(), server_for_current_query,
+                           speculator_.get(), prefetches)) {
+          log_error("Failed to do speculations");
+          break;
+        }
         // Now either wait for the result or we already have the result
         if (server_for_current_query != -1) {
           log_debug("Waiting for pending result");

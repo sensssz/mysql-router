@@ -20,7 +20,8 @@ static T min(T num1, T num2) {
 }
 
 SpscRingBuffer::SpscRingBuffer(size_t buf_size) :
-    read_loc_(0), write_loc_(0), buf_size_(buf_size), buffer_(new char[buf_size]) {}
+    error_(false), read_loc_(0), write_loc_(0),
+    buf_size_(buf_size), buffer_(new char[buf_size]) {}
 
 ssize_t SpscRingBuffer::Read(void *buffer, ssize_t size) {
   ssize_t read_loc = 0;
@@ -29,6 +30,9 @@ ssize_t SpscRingBuffer::Read(void *buffer, ssize_t size) {
   ssize_t read_size = 0;
   while (!HasData()) {
     // Left empty.
+    if (error_) {
+      return -1;
+    }
   }
   read_loc = read_loc_.load();
   write_loc = write_loc_.load();

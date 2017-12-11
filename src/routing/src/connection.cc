@@ -36,6 +36,9 @@ ssize_t Connection::Recv() {
 }
 
 ssize_t Connection::TryRecv() {
+  if (sock_ops_->has_error(fd_)) {
+    return -1;
+  }
   if (sock_ops_->has_data(fd_)) {
     return Recv();
   }
@@ -43,9 +46,15 @@ ssize_t Connection::TryRecv() {
 }
 
 ssize_t Connection::Send(size_t size) {
+  if (sock_ops_->has_error(fd_)) {
+    return -1;
+  }
   return sock_ops_->write(fd_, buf_, size);
 }
 
 ssize_t Connection::Send(uint8_t *buffer, size_t size) {
+  if (sock_ops_->has_error(fd_)) {
+    return -1;
+  }
   return sock_ops_->write(fd_, buffer, size);
 }

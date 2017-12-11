@@ -81,20 +81,26 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
   return std::unique_ptr<sql::Connection>(conn);
 }
 
-std::vector<long> Replay(sql::Connection *conn,
-  std::vector<std::pair<std::string, long>> &&trace) {
-  std::cout << "Replay starts" << std::endl;
+size_t Replay(const std::string &server,
+              size_t start,
+              std::vector<long> &latencies,
+              const std::vector<std::pair<std::string, long>> &trace) {
+  auto conn = std::move(::ConnectToDb(server));
+  if (conn.get() == nullptr) {
+    exit(EXIT_FAILURE);
+  }
   auto total = trace.size();
-  std::vector<long> latencies;
   std::chrono::high_resolution_clock::time_point trx_start;
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
-  for (size_t i = 0; i < total; i++) {
-    auto &query = trace[i];
-    auto qsize = query.first.size();
-    std::cout << "\rReplay of " << i + 1 << "/" << total << " " << qsize << std::flush;
-    if (qsize > 6000) {
-      std::cout << query.first.substr(qsize-101, 100) << std::endl;
+  for (; start > 0; start--) {
+    auto &query = trace[start];
+    if (query.first == "BEGIN") {
+      break;
     }
+  }
+  for (size_t i = start; i < total; i++) {
+    auto &query = trace[i];
+    std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
     if (query.second > 0) {
       std::this_thread::sleep_for(std::chrono::microseconds(query.second));
     }
@@ -116,14 +122,18 @@ std::vector<long> Replay(sql::Connection *conn,
         std::cout << "\n# ERR: " << e.what();
         std::cout << " (MySQL error code: " << e.getErrorCode();
         std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
-        if (e.getErrorCode() != 1062) {
-          break;
+        if (e.getErrorCode() == 2006) {
+          return total;
+        }
+        if (e.getErrorCode() != 1062 || e.getErrorCode() != 1064) {
+          return i;
         }
       }
     }
   }
   std::cout << "\nReplay finished." << std::endl;
-  return std::move(latencies);
+  return total;
+
 }
 
 double Mean(std::vector<long> &latencies) {
@@ -158,12 +168,12 @@ int main(int argc, char *argv[]) {
   std::string server(argv[1]);
   std::string workload_file(argv[2]);
   std::string latency_file(argv[3]);
-  auto conn = std::move(::ConnectToDb(server));
-  if (conn.get() == nullptr) {
-    exit(EXIT_FAILURE);
-  }
   auto trace = ::LoadWorkloadTrace(workload_file);
-  auto latencies = ::Replay(conn.get(), std::move(trace));
+  size_t start = 0;
+  std::vector<long> latencies;
+  while(start != trace.size()) {
+    start = Replay(server, start, latencies, trace);
+  }
   ::DumpLatencies(std::move(latencies), latency_file);
   return 0;
 }

@@ -16,6 +16,9 @@ public:
   ssize_t Read(void *buffer, size_t size) {
     return context_->buffer.Read(buffer, size);
   }
+  bool HasError() {
+    return context_->buffer.HasError();
+  }
   bool HasData() {
     return context_->buffer.HasData();
   }

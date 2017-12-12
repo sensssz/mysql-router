@@ -81,6 +81,18 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
   return std::unique_ptr<sql::Connection>(conn);
 }
 
+// Rewind to start of transaction
+size_t Rewind(size_t start,
+              const std::vector<std::pair<std::string, long>> &trace) {
+  for (; start > 0; start--) {
+    auto &query = trace[start];
+    if (query.first == "BEGIN") {
+      return start;
+    }
+  }
+  return 0;
+}
+
 size_t Replay(const std::string &server,
               size_t start,
               std::vector<long> &latencies,
@@ -89,15 +101,10 @@ size_t Replay(const std::string &server,
   if (conn.get() == nullptr) {
     exit(EXIT_FAILURE);
   }
+  start = Rewind(start, trace);
   auto total = trace.size();
   std::chrono::high_resolution_clock::time_point trx_start;
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
-  for (; start > 0; start--) {
-    auto &query = trace[start];
-    if (query.first == "BEGIN") {
-      break;
-    }
-  }
   for (size_t i = start; i < total; i++) {
     auto &query = trace[i];
     std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
@@ -122,10 +129,16 @@ size_t Replay(const std::string &server,
         std::cout << "\n# ERR: " << e.what();
         std::cout << " (MySQL error code: " << e.getErrorCode();
         std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+        // Reconnect when lost connection
         if (e.getErrorCode() == 2006 || e.getErrorCode() == 2013) {
           return i;
         }
-        if (e.getErrorCode() != 1062 && e.getErrorCode() != 1064) {
+        // Rewind when transaction times out
+        else if (e.getErrorCode() == 1205) {
+          i = Rewind() - 1;
+        }
+        // Skip for duplicates or syntax error
+        else if (e.getErrorCode() != 1062 && e.getErrorCode() != 1064) {
           return total;
         }
       }

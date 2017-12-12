@@ -14,6 +14,7 @@ public:
   Connection(const Connection &other) = delete;
   Connection(Connection &&other);
   ~Connection();
+  void Disconnect();
   uint8_t *Payload() {
     return buf_ + kMySQLHeaderLen;
   }

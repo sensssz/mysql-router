@@ -21,8 +21,13 @@ Connection::Connection(Connection &&other) : fd_(other.fd_), packet_number_(othe
 }
 
 Connection::~Connection() {
+  Disconnect();
+}
+
+void Disconnect() {
   if (fd_ >= 0) {
     sock_ops_->close(fd_);
+    fd_ = -1;
   }
 }
 

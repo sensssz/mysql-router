@@ -24,7 +24,7 @@ Connection::~Connection() {
   Disconnect();
 }
 
-void Disconnect() {
+void Connection::Disconnect() {
   if (fd_ >= 0) {
     sock_ops_->close(fd_);
     fd_ = -1;

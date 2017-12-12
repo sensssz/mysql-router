@@ -135,7 +135,7 @@ size_t Replay(const std::string &server,
         }
         // Rewind when transaction times out
         else if (e.getErrorCode() == 1205) {
-          i = Rewind() - 1;
+          i = Rewind(i, trace) - 1;
         }
         // Skip for duplicates or syntax error
         else if (e.getErrorCode() != 1062 && e.getErrorCode() != 1064) {

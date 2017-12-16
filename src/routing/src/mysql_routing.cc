@@ -76,39 +76,41 @@ using mysqlrouter::URIQuery;
 using mysqlrouter::TCPAddress;
 using mysqlrouter::is_valid_socket_name;
 
-static int kListenQueueSize = 1024;
+namespace {
 
-static const char *kDefaultReplicaSetName = "default";
-static const int kAcceptorStopPollInterval_ms = 1000;
+int kListenQueueSize = 1024;
 
-static bool IsQuery(uint8_t *buffer) {
+const char *kDefaultReplicaSetName = "default";
+const int kAcceptorStopPollInterval_ms = 1000;
+
+bool IsQuery(uint8_t *buffer) {
   return buffer[kMySQLHeaderLen] == static_cast<uint8_t>(COM_QUERY);
 }
 
-static std::string ExtractQuery(uint8_t *buffer) {
+std::string ExtractQuery(uint8_t *buffer) {
   size_t query_size = mysql_get_byte3(buffer) - 1;
   char *query = reinterpret_cast<char *>(buffer + kMySQLHeaderLen + 1);
   return std::string(query, query_size);
 }
 
-static std::string ToLower(const std::string &query) {
+std::string ToLower(const std::string &query) {
   std::string lower = query;
   std::transform(lower.begin(), lower.end(), lower.begin(), tolower);
   return std::move(lower);
 }
 
-static bool IsRead(const std::string &query) {
+bool IsRead(const std::string &query) {
   auto lower = ToLower(query);
   return lower.find("select") == 0 || lower.find("show") == 0;
 }
 
-static bool IsWrite(const std::string &query) {
+bool IsWrite(const std::string &query) {
   return !IsRead(query);
 }
 
 // The reserved_server is necessary because there may be a gap between
 // checking the result has arrived and the checks below.
-static bool DoSpeculation(
+bool DoSpeculation(
   const std::string &query,
   ServerGroup *server_group,
   int reserved_server,
@@ -136,10 +138,12 @@ static bool DoSpeculation(
   return true;
 }
 
-static size_t CopyToClient(std::pair<uint8_t*, size_t> &&result, Connection *client) {
+size_t CopyToClient(std::pair<uint8_t*, size_t> &&result, Connection *client) {
   memcpy(client->Buffer(), result.first, result.second);
   return result.second;
 }
+
+} // namespace
 
 MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
                            const Protocol::Type protocol,
@@ -164,7 +168,7 @@ MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
       bind_named_socket_(named_socket),
       service_tcp_(0),
       service_named_socket_(0),
-      speculator_(new FakeSpeculator("/gpfs/gpfs0/groups/mozafari/jiamin/lobsters.sql")),
+      speculator_(new FakeSpeculator("/users/POTaDOS/SQP/lobsters.sql")),
       stopping_(false),
       info_active_routes_(0),
       info_handled_routes_(0),
@@ -340,13 +344,25 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       log_error("Read from client fails");
       break;
     }
-
-    if (IsQuery(client_connection.Buffer())) {
-      std::string query = ExtractQuery(client_connection.Buffer());
+    auto iter = prefetches.find(query);
+    int server_for_current_query = -1;
+    if (iter != prefetches.end()) {
+      log_debug("Prediction hits, check for result");
+      if (server_group->IsReadyForQuery(iter->second)) {
+        // Result has been received
+        log_debug("Result has already arrived");
+        packet_size = ::CopyToClient(server_group->GetResult(iter->second), &client_connection);
+      } else {
+        log_debug("Result is pending");
+        server_for_current_query = iter->second;
+      }
+    }
+    if (::IsQuery(client_connection.Buffer())) {
+      std::string query = ::ExtractQuery(client_connection.Buffer());
       speculator_->CheckBegin(query);
       log_debug("Query is %s", query.c_str());
       size_t packet_size = 0;
-      if (IsWrite(query)) {
+      if (::IsWrite(query)) {
         log_debug("Got write query, forward it to all servers...");
         speculator_->SkipQuery();
         if (!server_group->ForwardToAll(query)) {
@@ -360,7 +376,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           log_error("Failed to get available server");
           break;
         }
-        packet_size = CopyToClient(server_group->GetResult(first_available), &client_connection);
+        packet_size = ::CopyToClient(server_group->GetResult(first_available), &client_connection);
         log_debug("Send results back to client");
         if (client_connection.Send(packet_size) <= 0) {
           log_error("Write to client fails");
@@ -383,7 +399,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           if (server_group->IsReadyForQuery(iter->second)) {
             // Result has been received
             log_debug("Result has already arrived");
-            packet_size = CopyToClient(server_group->GetResult(iter->second), &client_connection);
+            packet_size = ::CopyToClient(server_group->GetResult(iter->second), &client_connection);
           } else {
             log_debug("Result is pending");
             server_for_current_query = iter->second;
@@ -402,7 +418,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           }
         }
         log_debug("Do speculations");
-        if (!DoSpeculation(query, server_group.get(), server_for_current_query,
+        if (!::DoSpeculation(query, server_group.get(), server_for_current_query,
                            speculator_.get(), prefetches)) {
           log_error("Failed to do speculations");
           break;
@@ -414,7 +430,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
             ;
           }
           log_debug("Result has arrived");
-          packet_size = CopyToClient(server_group->GetResult(server_for_current_query), &client_connection);
+          packet_size = ::CopyToClient(server_group->GetResult(server_for_current_query), &client_connection);
         }
         log_debug("Send result back to client");
         if (client_connection.Send(packet_size) <= 0) {
@@ -446,6 +462,8 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       bytes_down += bytes_read;
     }
   } // while (true)
+
+  client_connection.Disconnect();
 
   if (!handshake_done) {
     auto ip_array = in_addr_to_array(client_addr);
@@ -534,8 +552,8 @@ void MySQLRouting::start_acceptor() {
     if (service_named_socket_ > 0) {
       FD_SET(service_named_socket_, &readfds);
     }
-    timeout_val.tv_sec = kAcceptorStopPollInterval_ms / 1000;
-    timeout_val.tv_usec = (kAcceptorStopPollInterval_ms % 1000) * 1000;
+    timeout_val.tv_sec = ::kAcceptorStopPollInterval_ms / 1000;
+    timeout_val.tv_usec = (::kAcceptorStopPollInterval_ms % 1000) * 1000;
     int ready_fdnum = select(nfds, &readfds, nullptr, &errfds, &timeout_val);
     if (ready_fdnum <= 0) {
       if (ready_fdnum == 0) {
@@ -664,7 +682,7 @@ void MySQLRouting::setup_tcp_service() {
     throw runtime_error(string_format("[%s] Failed to setup server socket", name.c_str()));
   }
 
-  if (listen(service_tcp_, kListenQueueSize) < 0) {
+  if (listen(service_tcp_, ::kListenQueueSize) < 0) {
     throw runtime_error(string_format("[%s] Failed to start listening for connections using TCP", name.c_str()));
   }
 }
@@ -732,7 +750,7 @@ retry:
 void MySQLRouting::set_destinations_from_uri(const URI &uri) {
   if (uri.scheme == "metadata-cache") {
     // Syntax: metadata_cache://[<metadata_cache_key(unused)>]/<replicaset_name>?role=PRIMARY|SECONDARY
-    std::string replicaset_name = kDefaultReplicaSetName;
+    std::string replicaset_name = ::kDefaultReplicaSetName;
     std::string role;
 
     if (uri.path.size() > 0 && !uri.path[0].empty())

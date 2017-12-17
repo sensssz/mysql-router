@@ -227,6 +227,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   int server = -1;
   ssize_t packet_size;
   // Prediction not hit, send it now.
+  log_debug("Prediction fails");
   if (IsWrite(query)) {
     log_debug("Got write query, forward it to all servers...");
     speculator->SkipQuery();
@@ -248,7 +249,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     }
   } else {
     server = server_group->GetAvailableServer();
-    log_debug("Prediction fails, execute it on server %d", server);
+    log_debug("Got read query, execute it on server %d", server);
     if (server < 0) {
       log_error("Failed to get available server");
       return -1;

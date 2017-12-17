@@ -21,7 +21,7 @@ public:
   std::pair<uint8_t*, size_t> GetResult(size_t server_index);
 
   bool SendQuery(size_t server_index, const std::string &query);
-  bool Propagate(const std::string &query, int source_write_server);
+  bool Propagate(const std::string &query, size_t source_write_server);
   bool IsReadyForQuery(size_t server_index);
   void WaitForServer(size_t server_index);
   bool ForwardToAll(const std::string &query);

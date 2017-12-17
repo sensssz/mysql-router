@@ -145,7 +145,7 @@ size_t CopyToClient(std::pair<uint8_t*, size_t> &&result, Connection *client) {
 }
 
 bool HandleNonQuery(ServerGroup *server_group, Connection *client,
-                    size_t bytes_read, ssize_t &bytes_up, size_t &bytes_down) {
+                    size_t bytes_read, ssize_t &bytes_up, ssize_t &bytes_down) {
   log_debug("Forwarding packet to the server...");
   if (server_group->Write(client->Buffer(), bytes_read) <= 0) {
     log_error("Write to servers fails");
@@ -187,7 +187,7 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
     server_for_current_query = server_index;
   }
   if (IsWrite(query)) {
-    if (!Propagate(query, server_index)) {
+    if (!server_group->Propagate(query, static_cast<size_t>(server_index))) {
       return -1;
     }
     if (server_for_current_query != -1) {
@@ -225,10 +225,11 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
                               Speculator *speculator,
                               std::unordered_map<std::string, int> &prefetches) {
   int server = -1;
+  ssize_t packet_size;
   // Prediction not hit, send it now.
   if (IsWrite(query)) {
     log_debug("Got write query, forward it to all servers...");
-    speculator_->SkipQuery();
+    speculator->SkipQuery();
     if (!server_group->ForwardToAll(query)) {
       log_error("Failed to forward query to servers");
       return -1;
@@ -240,7 +241,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       log_error("Failed to get available server");
       return -1;
     }
-    packet_size = CopyToClient(server_group->GetResult(server), &client_connection);
+    packet_size = CopyToClient(server_group->GetResult(server), client);
     if (!DoSpeculation(query, server_group, -1, speculator, prefetches)) {
       log_error("Failed to send speculations");
       return -1;
@@ -261,10 +262,10 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       return -1;
     }
     server_group->WaitForServer(server);
-    packet_size = CopyToClient(server_group->GetResult(server), &client_connection);
+    packet_size = CopyToClient(server_group->GetResult(server), client);
   }
   log_debug("Send results back to client");
-  if (client_connection.Send(packet_size) <= 0) {
+  if (client->Send(packet_size) <= 0) {
     log_error("Write to client fails");
     return -1;
   }
@@ -296,7 +297,7 @@ MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
       bind_named_socket_(named_socket),
       service_tcp_(0),
       service_named_socket_(0),
-      speculator_(new FakeSpeculator("/users/POTaDOS/SQP/lobsters.sql")),
+      (new FakeSpeculator("/users/POTaDOS/SQP/lobsters.sql")),
       stopping_(false),
       info_active_routes_(0),
       info_handled_routes_(0),
@@ -477,14 +478,13 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       speculator_->CheckBegin(query);
       log_debug("Query is %s", query.c_str());
       auto iter = prefetches.find(query);
-      int server_for_current_query = -1;
       ssize_t packet_size = -1;
       if (iter != prefetches.end()) {
         packet_size = ::HandleSpeculationHit(server_group.get(), query, iter->second,
-                                             &client_connection, speculator_, prefetches);
+                                             &client_connection, speculator_.get(), prefetches);
       } else {
         packet_size = ::HandleSpeculationMiss(server_group.get(), query, &client_connection,
-                                              speculator_, prefetches);
+                                              speculator_.get(), prefetches);
       }
       if (packet_size < 0) {
         break;

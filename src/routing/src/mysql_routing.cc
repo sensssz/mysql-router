@@ -109,7 +109,8 @@ bool IsWrite(const std::string &query) {
 }
 
 // The reserved_server is necessary because there may be a gap between
-// checking the result has arrived and the checks below.
+// checking the result has arrived and the checks below. We can not
+// use the server for query because we need the result.
 bool DoSpeculation(
   const std::string &query,
   ServerGroup *server_group,
@@ -141,6 +142,133 @@ bool DoSpeculation(
 size_t CopyToClient(std::pair<uint8_t*, size_t> &&result, Connection *client) {
   memcpy(client->Buffer(), result.first, result.second);
   return result.second;
+}
+
+bool HandleNonQuery(ServerGroup *server_group, Connection *client,
+                    size_t bytes_read, ssize_t &bytes_up, size_t &bytes_down) {
+  log_debug("Forwarding packet to the server...");
+  if (server_group->Write(client->Buffer(), bytes_read) <= 0) {
+    log_error("Write to servers fails");
+    return false;
+  }
+  bytes_up += bytes_read;
+
+  log_debug("Reading packet from the server...");
+  bytes_read = server_group->Read(client->Buffer(), Connection::kBufferSize);
+  if (bytes_read <= 0) {
+    log_error("Read from servers fail");
+    return false;
+  }
+  log_debug("Forwarding packet back to client...");
+  if (client->Send(bytes_read) <= 0) {
+    log_error("Write to client fails");
+    return false;
+  }
+  log_debug("Result sent back");
+  bytes_down += bytes_read;
+  return true;
+}
+
+ssize_t HandleSpeculationHit(ServerGroup *server_group,
+                          const std::string &query,
+                          int server_index,
+                          Connection *client,
+                          Speculator *speculator,
+                          std::unordered_map<std::string, int> &prefetches) {
+  int server_for_current_query = -1;
+  size_t packet_size = 0;
+  log_debug("Prediction hits, check for result");
+  if (server_group->IsReadyForQuery(server_index)) {
+    // Result has been received
+    log_debug("Result has already arrived");
+    packet_size = CopyToClient(server_group->GetResult(server_index), client);
+  } else {
+    log_debug("Result is pending");
+    server_for_current_query = server_index;
+  }
+  if (IsWrite(query)) {
+    if (!Propagate(query, server_index)) {
+      return -1;
+    }
+    if (server_for_current_query != -1) {
+      server_group->WaitForServer(server_for_current_query);
+      packet_size = CopyToClient(server_group->GetResult(server_for_current_query), client);
+    }
+    // DoSpeculation always checks whether a server is ready for query.
+    if (!DoSpeculation(query, server_group, -1, speculator, prefetches)) {
+      return -1;
+    }
+  } else {
+    if (!DoSpeculation(query, server_group, server_for_current_query, speculator, prefetches)) {
+      return -1;
+    }
+    // DoSpeculation always checks whether a server is ready for query.
+    if (!DoSpeculation(query, server_group, -1, speculator, prefetches)) {
+      return -1;
+    }
+    if (server_for_current_query != -1) {
+      server_group->WaitForServer(server_for_current_query);
+      packet_size = CopyToClient(server_group->GetResult(server_for_current_query), client);
+    }
+  }
+  log_debug("Send results back to client");
+  if (client->Send(packet_size) <= 0) {
+    log_error("Write to client fails");
+    return -1;
+  }
+  return packet_size;
+}
+
+ssize_t HandleSpeculationMiss(ServerGroup *server_group,
+                              const std::string &query,
+                              Connection *client,
+                              Speculator *speculator,
+                              std::unordered_map<std::string, int> &prefetches) {
+  int server = -1;
+  // Prediction not hit, send it now.
+  if (IsWrite(query)) {
+    log_debug("Got write query, forward it to all servers...");
+    speculator_->SkipQuery();
+    if (!server_group->ForwardToAll(query)) {
+      log_error("Failed to forward query to servers");
+      return -1;
+    }
+    log_debug("Query forwarded to all servers, waiting for one of them to be available");
+    server = server_group->GetAvailableServer();
+    log_debug("Got server %d to read result from", server);
+    if (server < 0) {
+      log_error("Failed to get available server");
+      return -1;
+    }
+    packet_size = CopyToClient(server_group->GetResult(server), &client_connection);
+    if (!DoSpeculation(query, server_group, -1, speculator, prefetches)) {
+      log_error("Failed to send speculations");
+      return -1;
+    }
+  } else {
+    server = server_group->GetAvailableServer();
+    log_debug("Prediction fails, execute it on server %d", server);
+    if (server < 0) {
+      log_error("Failed to get available server");
+      return -1;
+    }
+    if (!server_group->SendQuery(server, query)) {
+      log_error("Failed to send query to server");
+      return -1;
+    }
+    if (!DoSpeculation(query, server_group, server, speculator, prefetches)) {
+      log_error("Failed to send speculations");
+      return -1;
+    }
+    server_group->WaitForServer(server);
+    packet_size = CopyToClient(server_group->GetResult(server), &client_connection);
+  }
+  log_debug("Send results back to client");
+  if (client_connection.Send(packet_size) <= 0) {
+    log_error("Write to client fails");
+    return -1;
+  }
+  return packet_size;
 }
 
 } // namespace
@@ -344,122 +472,28 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       log_error("Read from client fails");
       break;
     }
-    auto iter = prefetches.find(query);
-    int server_for_current_query = -1;
-    if (iter != prefetches.end()) {
-      log_debug("Prediction hits, check for result");
-      if (server_group->IsReadyForQuery(iter->second)) {
-        // Result has been received
-        log_debug("Result has already arrived");
-        packet_size = ::CopyToClient(server_group->GetResult(iter->second), &client_connection);
-      } else {
-        log_debug("Result is pending");
-        server_for_current_query = iter->second;
-      }
-    }
     if (::IsQuery(client_connection.Buffer())) {
       std::string query = ::ExtractQuery(client_connection.Buffer());
       speculator_->CheckBegin(query);
       log_debug("Query is %s", query.c_str());
-      size_t packet_size = 0;
-      if (::IsWrite(query)) {
-        log_debug("Got write query, forward it to all servers...");
-        speculator_->SkipQuery();
-        if (!server_group->ForwardToAll(query)) {
-          log_error("Failed to forward query to servers");
-          break;
-        }
-        log_debug("Query forwarded to all servers, waiting for one of them to be available");
-        auto first_available = server_group->GetAvailableServer();
-        log_debug("Got server %d to read result from", first_available);
-        if (first_available < 0) {
-          log_error("Failed to get available server");
-          break;
-        }
-        packet_size = ::CopyToClient(server_group->GetResult(first_available), &client_connection);
-        log_debug("Send results back to client");
-        if (client_connection.Send(packet_size) <= 0) {
-          log_error("Write to client fails");
-          break;
-        }
-        bytes_down += packet_size;
+      auto iter = prefetches.find(query);
+      int server_for_current_query = -1;
+      ssize_t packet_size = -1;
+      if (iter != prefetches.end()) {
+        packet_size = ::HandleSpeculationHit(server_group.get(), query, iter->second,
+                                             &client_connection, speculator_, prefetches);
       } else {
-        // Ideally we want to send out all speculative queries and then
-        // check if our prediction hits for the current query. But we want
-        // to make sure that if prediction does not hit, the current query
-        // gets the first available server. Also if the prediction hits and
-        // the result has already been retrieved, then that server can be
-        // reused to process the speculative query. Therefore, we first check
-        // for prediction hit, and then check whether the result has arrived.
-        log_debug("Got read query");
-        auto iter = prefetches.find(query);
-        int server_for_current_query = -1;
-        if (iter != prefetches.end()) {
-          log_debug("Prediction hits, check for result");
-          if (server_group->IsReadyForQuery(iter->second)) {
-            // Result has been received
-            log_debug("Result has already arrived");
-            packet_size = ::CopyToClient(server_group->GetResult(iter->second), &client_connection);
-          } else {
-            log_debug("Result is pending");
-            server_for_current_query = iter->second;
-          }
-        } else {
-          // Prediction not hit, send it now.
-          server_for_current_query = server_group->GetAvailableServer();
-          log_debug("Prediction fails, execute it on server %d", server_for_current_query);
-          if (server_for_current_query < 0) {
-            log_error("Failed to get available server");
-            break;
-          }
-          if (!server_group->SendQuery(server_for_current_query, query)) {
-            log_error("Failed to send query to server");
-            break;
-          }
-        }
-        log_debug("Do speculations");
-        if (!::DoSpeculation(query, server_group.get(), server_for_current_query,
-                           speculator_.get(), prefetches)) {
-          log_error("Failed to do speculations");
-          break;
-        }
-        // Now either wait for the result or we already have the result
-        if (server_for_current_query != -1) {
-          log_debug("Waiting for pending result");
-          while (!server_group->IsReadyForQuery(server_for_current_query)) {
-            ;
-          }
-          log_debug("Result has arrived");
-          packet_size = ::CopyToClient(server_group->GetResult(server_for_current_query), &client_connection);
-        }
-        log_debug("Send result back to client");
-        if (client_connection.Send(packet_size) <= 0) {
-          log_error("Write to client fails");
-          break;
-        }
-        bytes_down += packet_size;
+        packet_size = ::HandleSpeculationMiss(server_group.get(), query, &client_connection,
+                                              speculator_, prefetches);
       }
+      if (packet_size < 0) {
+        break;
+      }
+      bytes_down += packet_size;
     } else {
-      log_debug("Forwarding packet to the server...");
-      if (server_group->Write(client_connection.Buffer(), bytes_read) <= 0) {
-        log_error("Write to servers fails");
+      if (!::HandleNonQuery(server_group.get(), &client_connection, bytes_read, bytes_up, bytes_down)) {
         break;
       }
-      bytes_up += bytes_read;
-
-      log_debug("Reading packet from the server...");
-      bytes_read = server_group->Read(client_connection.Buffer(), Connection::kBufferSize);
-      if (bytes_read <= 0) {
-        log_error("Read from servers fail");
-        break;
-      }
-      log_debug("Forwarding packet back to client...");
-      if (client_connection.Send(bytes_read) <= 0) {
-        log_error("Write to client fails");
-        break;
-      }
-      log_debug("Result sent back");
-      bytes_down += bytes_read;
     }
   } // while (true)
 

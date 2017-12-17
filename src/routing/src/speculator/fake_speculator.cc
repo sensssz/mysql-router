@@ -6,7 +6,9 @@
 static std::vector<std::string> fake_speculations{
   "SELECT  `keystores`.* FROM `keystores`  WHERE `keystores`.`key` = 'traffic:date'  ORDER BY `keystores`.`key` ASC LIMIT 1",
   "SELECT  `keystores`.* FROM `keystores`  WHERE `keystores`.`key` = 'traffic:hits'  ORDER BY `keystores`.`key` ASC LIMIT 1",
-  "SELECT  `keystores`.* FROM `keystores`  WHERE `keystores`.`key` = 'user:2:unread_messages'  ORDER BY `keystores`.`key` ASC LIMIT 1"
+  "SELECT  `keystores`.* FROM `keystores`  WHERE `keystores`.`key` = 'user:2:unread_messages'  ORDER BY `keystores`.`key` ASC LIMIT 1",
+  "SELECT COUNT(*) FROM `invitation_requests`  WHERE `invitation_requests`.`is_verified` = 1",
+  "SELECT `users`.* FROM `users`  WHERE `users`.`id` IN (9, 8, 6, 5, 4, 3, 2, 276, 274, 273, 272, 271, 265, 263, 262, 260, 255, 251, 247, 245)"
 };
 
 FakeSpeculator::FakeSpeculator(const std::string &filename) : start_(false), current_query_(0), dist_(1, 100) {
@@ -29,12 +31,13 @@ void FakeSpeculator::CheckBegin(const std::string &query) {
 
 std::vector<std::string> FakeSpeculator::Speculate(const std::string &query, int num_speculations) {
   std::vector<std::string> speculations;
+  // return std::move(speculations);
   if (!start_) {
     return speculations;
   }
   int rand_num = dist_(rand_gen_);
   current_query_++;
-  if (rand_num <= 57) {
+  if (rand_num <= 100) {
     auto &next_query = queries_[current_query_];
     if (next_query == "BEGIN" || next_query == "COMMIT") {
       log_debug("Cannot predict BEGIN or COMMIT");

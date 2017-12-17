@@ -10,6 +10,7 @@
 #include <chrono>
 #include <fstream>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -61,22 +62,26 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
   std::string url = server + ":4243";
   std::cout << "Connecting to database..." << std::endl;
   sql::Connection *conn = nullptr;
-  try {
-    conn = driver->connect(url, "root", "");
-    if (!conn->isValid()) {
-      std::cout << "Connection fails" << std::endl;
-      delete conn;
+  auto attempts = 0;
+  while (conn == nullptr && attempts < 10) {
+    try {
+      conn = driver->connect(url, "root", "");
+      if (!conn->isValid()) {
+        std::cout << "Connection fails" << std::endl;
+        delete conn;
+        conn = nullptr;
+      } else {
+        std::cout << "Connection established" << std::endl;
+        conn->setSchema("lobsters");
+        conn->setAutoCommit(false);
+      }
+    } catch (sql::SQLException &e) {
+      std::cout << "# ERR: " << e.what();
+      std::cout << " (MySQL error code: " << e.getErrorCode();
+      std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
       conn = nullptr;
-    } else {
-      std::cout << "Connection established" << std::endl;
-      conn->setSchema("lobsters");
-      conn->setAutoCommit(false);
     }
-  } catch (sql::SQLException &e) {
-    std::cout << "# ERR: " << e.what();
-    std::cout << " (MySQL error code: " << e.getErrorCode();
-    std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
-    conn = nullptr;
+    attempts++;
   }
   return std::unique_ptr<sql::Connection>(conn);
 }
@@ -96,6 +101,7 @@ size_t Rewind(size_t start,
 size_t Replay(const std::string &server,
               size_t start,
               std::vector<long> &latencies,
+              std::set<size_t> &skipped_queries,
               const std::vector<std::pair<std::string, long>> &trace) {
   auto conn = std::move(::ConnectToDb(server));
   if (conn.get() == nullptr) {
@@ -105,11 +111,15 @@ size_t Replay(const std::string &server,
   auto total = trace.size();
   std::chrono::high_resolution_clock::time_point trx_start;
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
+  stmt->execute("set autocommit=0");
   for (size_t i = start; i < total; i++) {
     auto &query = trace[i];
     std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
     if (query.second > 0) {
       std::this_thread::sleep_for(std::chrono::microseconds(query.second));
+    }
+    if (skipped_queries.find(i) != skipped_queries.end()) {
+      continue;
     }
     if (query.first == "COMMIT") {
       conn->commit();
@@ -130,7 +140,11 @@ size_t Replay(const std::string &server,
         std::cout << " (MySQL error code: " << e.getErrorCode();
         std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
         // Reconnect when lost connection
-        if (e.getErrorCode() == 2006 || e.getErrorCode() == 2013) {
+        if (e.getErrorCode() == 2006 || e.getErrorCode() == 2013 || e.getErrorCode() == 2014 || e.getErrorCode() == 1046) {
+          return i;
+        }
+        else if (e.getErrorCode() == 1064) {
+          skipped_queries.insert(i);
           return i;
         }
         // Rewind when transaction times out
@@ -138,7 +152,7 @@ size_t Replay(const std::string &server,
           i = Rewind(i, trace) - 1;
         }
         // Skip for duplicates or syntax error
-        else if (e.getErrorCode() != 1062 && e.getErrorCode() != 1064) {
+        else if (e.getErrorCode() != 1062 && e.getErrorCode() != 2014) {
           return total;
         }
       }
@@ -171,6 +185,21 @@ void DumpLatencies(std::vector<long> &&latencies, const std::string &file) {
   std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " transactions" << std::endl;
 }
 
+void RestartServers() {
+  system("/users/POTaDOS/.local/bin/mrstart");
+  for (auto i = 1; i <= 2; i++) {
+    auto command = "ssh server" + std::to_string(i) + R"( /bin/bash <<EOF
+      source .bashrc;
+      ~/.local/mysql/support-files/mysql.server stop;
+      echo '' > ~/.local/mysql/mysqld.log;
+      rm -rf ~/.local/mysql/data;
+      cp -r ~/SQP/lobsters ~/.local/mysql/data;
+      ~/.local/mysql/support-files/mysql.server start;
+EOF)";
+    system(command.c_str());
+  }
+}
+
 } // namespace
 
 int main(int argc, char *argv[]) {
@@ -184,8 +213,10 @@ int main(int argc, char *argv[]) {
   auto trace = ::LoadWorkloadTrace(workload_file);
   size_t start = 0;
   std::vector<long> latencies;
+  std::set<size_t> skipped_queries;
   while(start != trace.size()) {
-    start = Replay(server, start, latencies, trace);
+    RestartServers();
+    start = Replay(server, start, latencies, skipped_queries, trace);
   }
   ::DumpLatencies(std::move(latencies), latency_file);
   return 0;

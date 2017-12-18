@@ -46,7 +46,7 @@ int ServerGroup::Read(uint8_t *buffer, size_t size) {
   bool error = false;
   // We do a read on all servers, whether there's error or not
   for (size_t i = 1; i < server_conns_.size(); i++) {
-    read_results_[i] = server_conns_[i]->Recv();
+    read_results_[i] = server_conns_[i].Recv();
     if (read_results_[i] <= 0) {
       error = true;
     } else {

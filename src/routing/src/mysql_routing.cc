@@ -492,6 +492,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       }
       bytes_down += packet_size;
     } else {
+      prefetches.clear();
       if (!::HandleNonQuery(server_group.get(), &client_connection, bytes_read, bytes_up, bytes_down)) {
         break;
       }

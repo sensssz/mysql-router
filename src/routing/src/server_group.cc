@@ -45,15 +45,13 @@ bool ServerGroup::Authenticate(Connection *client) {
 int ServerGroup::Read(uint8_t *buffer, size_t size) {
   bool error = false;
   // We do a read on all servers, whether there's error or not
-  size_t i = 1;
-  for (auto it = server_conns_.begin() + 1; it != server_conns_.end(); it++) {
-    read_results_[i] = it->Recv();
+  for (size_t i = 1; i < server_conns_.size(); i++) {
+    read_results_[i] = server_conns_[i]->Recv();
     if (read_results_[i] <= 0) {
       error = true;
     } else {
       has_outstanding_request_[i] = false;
     }
-    i++;
   }
   int read_size = static_cast<int>(server_conns_[0].Recv());
   if (read_size < 0) {
@@ -71,14 +69,13 @@ int ServerGroup::Read(uint8_t *buffer, size_t size) {
 
 int ServerGroup::Write(uint8_t *buffer, size_t size) {
   bool error = false;
-  size_t i = 0;
-  for (auto &conn : server_conns_) {
-    if (conn.Send(buffer, size) < 0) {
+  for (size_t i = 0; i < server_conns_.size(); i++) {
+    WaitForServer(i);
+    if (server_conns_[i].Send(buffer, size) < 0) {
       error = true;
     } else {
       has_outstanding_request_[i] = true;
     }
-    i++;
   }
   if (error) {
     return -1;

@@ -230,7 +230,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   log_debug("Prediction fails");
   if (IsWrite(query)) {
     log_debug("Got write query, forward it to all servers...");
-    speculator->SkipQuery();
+    // speculator->SkipQuery();
     if (!server_group->ForwardToAll(query)) {
       log_error("Failed to forward query to servers");
       return -1;

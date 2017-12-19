@@ -202,10 +202,6 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
     if (!DoSpeculation(query, server_group, server_for_current_query, speculator, prefetches)) {
       return -1;
     }
-    // DoSpeculation always checks whether a server is ready for query.
-    if (!DoSpeculation(query, server_group, -1, speculator, prefetches)) {
-      return -1;
-    }
     if (server_for_current_query != -1) {
       server_group->WaitForServer(server_for_current_query);
       packet_size = CopyToClient(server_group->GetResult(server_for_current_query), client);

@@ -21,6 +21,16 @@ namespace {
 
 namespace rjson = rapidjson;
 
+double Mean(std::vector<long> &latencies) {
+  double mean = 0;
+  double i = 1;
+  for (auto latency : latencies) {
+    mean += (latency - mean) / i;
+    i++;
+  }
+  return mean;
+}
+
 std::pair<std::string, long> ParseQuery(const std::string &line) {
   rjson::Document doc;
   doc.Parse(line.c_str());
@@ -39,6 +49,11 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &f
   }
   std::string line;
   long think_time = 0;
+  int num_reads = 0;
+  int num_writes = 0;
+  std::vector<long> times;
+  std::vector<long> sizes;
+  int current_size = 0;
   while (!infile.eof()) {
     std::getline(infile, line);
     if (line.length() <= 1) {
@@ -52,8 +67,24 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &f
     }
     res.push_back(std::make_pair(pair.first, think_time));
     prev_timestamp = pair.second;
+    if (pair.first.find("BEGIN") == 0) {
+      current_size = 0;
+    } else if (pair.first.find("COMMIT") == 0) {
+      sizes.push_back(current_size);
+    } else if (pair.first.find("SELECT") == 0) {
+      num_reads++;
+      current_size++;
+      times.push_back(think_time);
+    } else {
+      num_writes++;
+      current_size++;
+      times.push_back(think_time);
+    }
   }
   std::cout << "Workload trace loaded" << std::endl;
+  std::cout << "Average think time is " << Mean(times) << " ms" << std::endl;
+  std::cout << num_reads << " reads and " << num_writes << " writes" << std::endl;
+  std::cout << "Average transaction size is " << Mean(sizes) << std::endl;
   return std::move(res);
 }
 
@@ -112,11 +143,13 @@ size_t Replay(const std::string &server,
   std::chrono::high_resolution_clock::time_point trx_start;
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
   stmt->execute("set autocommit=0");
+  double total_think_time = 0;
   for (size_t i = start; i < total; i++) {
     auto &query = trace[i];
     std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
     if (query.second > 0) {
       std::this_thread::sleep_for(std::chrono::microseconds(query.second));
+      total_think_time += query.second;
     }
     if (skipped_queries.find(i) != skipped_queries.end()) {
       continue;
@@ -126,9 +159,11 @@ size_t Replay(const std::string &server,
       auto trx_end = std::chrono::high_resolution_clock::now();
       auto duration = std::chrono::duration_cast<std::chrono::microseconds>(trx_end - trx_start);
       latencies.push_back(duration.count());
+      std::cout << "    " << total_think_time << "    " << duration.count() << "    " << duration.count() - total_think_time << "       ";
     } else {
       if (query.first == "BEGIN") {
         trx_start = std::chrono::high_resolution_clock::now();
+        total_think_time = 0;
       }
       try {
         bool is_select = stmt->execute(query.first);
@@ -152,7 +187,9 @@ size_t Replay(const std::string &server,
           i = Rewind(i, trace) - 1;
         }
         // Skip for duplicates or syntax error
-        else if (e.getErrorCode() != 1062 && e.getErrorCode() != 2014) {
+        else if (e.getErrorCode() != 1062 && 
+                 e.getErrorCode() != 1065 &&
+                 e.getErrorCode() != 2014) {
           return total;
         }
       }
@@ -161,19 +198,6 @@ size_t Replay(const std::string &server,
   std::cout << "\nReplay finished." << std::endl;
   return total;
 
-}
-
-double Mean(std::vector<long> &latencies) {
-  if (latencies.size() == 0) {
-    return 0;
-  }
-  double mean = 0;
-  double i = 1;
-  for (auto latency : latencies) {
-    mean += (latency - mean) / i;
-    i++;
-  }
-  return mean;
 }
 
 void DumpLatencies(std::vector<long> &&latencies, const std::string &file) {
@@ -186,7 +210,7 @@ void DumpLatencies(std::vector<long> &&latencies, const std::string &file) {
 }
 
 void RestartServers() {
-  system("/users/POTaDOS/.local/bin/mrstart");
+  system("ssh server4 /users/POTaDOS/.local/bin/mrstart");
   for (auto i = 1; i <= 2; i++) {
     auto command = "ssh server" + std::to_string(i) + R"( /bin/bash <<EOF
       source .bashrc;
@@ -194,6 +218,7 @@ void RestartServers() {
       echo '' > ~/.local/mysql/mysqld.log;
       rm -rf ~/.local/mysql/data;
       cp -r ~/SQP/lobsters ~/.local/mysql/data;
+      sleep 5s;
       ~/.local/mysql/support-files/mysql.server start;
 EOF)";
     system(command.c_str());

@@ -222,6 +222,9 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
                               std::unordered_map<std::string, int> &prefetches) {
   int server = -1;
   ssize_t packet_size;
+  if (query != "BEGIN" && query != "COMMIT") {
+    std::cerr << "Prediction fails" << std::endl;
+  }
   // Prediction not hit, send it now.
   log_debug("Prediction fails");
   if (IsWrite(query)) {

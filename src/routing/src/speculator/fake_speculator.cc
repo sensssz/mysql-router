@@ -32,11 +32,11 @@ void FakeSpeculator::CheckBegin(const std::string &query) {
 std::vector<std::string> FakeSpeculator::Speculate(const std::string &query, int num_speculations) {
   std::vector<std::string> speculations;
   // return std::move(speculations);
-  if (!start_) {
+  if (!start_ || current_query_ == -1) {
     return speculations;
   }
-  int rand_num = dist_(rand_gen_);
   current_query_++;
+  int rand_num = dist_(rand_gen_);
   if (rand_num <= 100) {
     auto &next_query = queries_[current_query_];
     if (next_query == "BEGIN" || next_query == "COMMIT") {

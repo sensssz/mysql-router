@@ -38,6 +38,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <sstream>
 #include <unordered_map>
 
@@ -82,15 +83,23 @@ int kListenQueueSize = 1024;
 
 const char *kDefaultReplicaSetName = "default";
 const int kAcceptorStopPollInterval_ms = 1000;
+const int kNumIndexDigits = 10;
 
 bool IsQuery(uint8_t *buffer) {
   return buffer[kMySQLHeaderLen] == static_cast<uint8_t>(COM_QUERY);
 }
 
-std::string ExtractQuery(uint8_t *buffer) {
+std::pair<int, std::string> ExtractQuery(uint8_t *buffer) {
   size_t query_size = mysql_get_byte3(buffer) - 1;
   char *query = reinterpret_cast<char *>(buffer + kMySQLHeaderLen + 1);
-  return std::string(query, query_size);
+  int query_index = -1;
+  if (isdigit(query[0])) {
+    query[kNumIndexDigits - 1] = '\0';
+    index = atoi(query);
+    query += kNumIndexDigits;
+    query_size -= kNumIndexDigits;
+  }
+  return std::make_pair(query_size, std::string(query, query_size));
 }
 
 std::string ToLower(const std::string &query) {
@@ -117,23 +126,25 @@ bool DoSpeculation(
   int reserved_server,
   Speculator *speculator,
   std::unordered_map<std::string, int> &prefetches) {
+  prefetches.clear();
   auto speculations = speculator->Speculate(query);
   if (speculations.size() == 0) {
     return true;
   }
-  auto iter = speculations.begin();
-  for (size_t i = 0; i < server_group->Size(); i++) {
-    if (static_cast<int>(i) == reserved_server ||
-        !server_group->IsReadyForQuery(i)) {
-      continue;
-    }
-    if (!server_group->SendQuery(i, *iter)) {
-      return false;
-    }
-    prefetches[*iter] = static_cast<int>(i);
-    iter++;
-    if (iter == speculations.end()) {
-      break;
+  std::set<int> servers_in_use;
+  servers_in_use.insert(reserved_server);
+  for (const auto &query : speculations) {
+    for (size_t i = 0; i < server_group->Size(); i++) {
+      auto index = static_cast<int>(i);
+      if (servers_in_use.find(index) != servers_in_use.end() ||
+          !server_group->IsReadyForQuery(i)) {
+        continue;
+      }
+      if (!server_group->SendQuery(i, query)) {
+        return false;
+      }
+      prefetches[query] = index;
+      servers_in_use.insert(i);
     }
   }
   return true;
@@ -222,14 +233,10 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
                               std::unordered_map<std::string, int> &prefetches) {
   int server = -1;
   ssize_t packet_size;
-  if (query != "BEGIN" && query != "COMMIT") {
-    std::cerr << "Prediction fails" << std::endl;
-  }
   // Prediction not hit, send it now.
   log_debug("Prediction fails");
   if (IsWrite(query)) {
     log_debug("Got write query, forward it to all servers...");
-    // speculator->SkipQuery();
     if (!server_group->ForwardToAll(query)) {
       log_error("Failed to forward query to servers");
       return -1;
@@ -474,8 +481,11 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       break;
     }
     if (::IsQuery(client_connection.Buffer())) {
-      std::string query = ::ExtractQuery(client_connection.Buffer());
+      auto pair = ::ExtractQuery(client_connection.Buffer());
+      int query_index = pair.first;
+      std::string query = pair.second;
       speculator_->CheckBegin(query);
+      speculator_->SetQueryIndex(query_index);
       log_debug("Query is %s", query.c_str());
       auto iter = prefetches.find(query);
       ssize_t packet_size = -1;

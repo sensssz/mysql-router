@@ -133,17 +133,17 @@ bool DoSpeculation(
   }
   std::set<int> servers_in_use;
   servers_in_use.insert(reserved_server);
-  for (const auto &query : speculations) {
+  for (const auto &speculation : speculations) {
     for (size_t i = 0; i < server_group->Size(); i++) {
       auto index = static_cast<int>(i);
       if (servers_in_use.find(index) != servers_in_use.end() ||
           !server_group->IsReadyForQuery(i)) {
         continue;
       }
-      if (!server_group->SendQuery(i, query)) {
+      if (!server_group->SendQuery(i, speculation)) {
         return false;
       }
-      prefetches[query] = index;
+      prefetches[speculation] = index;
       servers_in_use.insert(i);
     }
   }

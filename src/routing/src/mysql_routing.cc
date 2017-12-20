@@ -38,6 +38,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <sstream>
 #include <unordered_map>
 

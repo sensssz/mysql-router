@@ -56,6 +56,7 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &f
   std::vector<long> times;
   std::vector<long> sizes;
   int current_size = 0;
+  int num_commits = 0;
   while (!infile.eof()) {
     std::getline(infile, line);
     if (line.length() <= 1) {
@@ -73,6 +74,10 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &f
       current_size = 0;
     } else if (pair.first.find("COMMIT") == 0) {
       sizes.push_back(current_size);
+      ++num_commits;
+      if (num_commits == 500) {
+        break;
+      }
     } else if (pair.first.find("SELECT") == 0) {
       num_reads++;
       current_size++;
@@ -80,7 +85,7 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &f
     } else {
       num_writes++;
       current_size++;
-      times.push_back(think_time);
+      // times.push_back(think_time);
     }
   }
   std::cout << "Workload trace loaded" << std::endl;

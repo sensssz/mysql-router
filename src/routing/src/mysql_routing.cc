@@ -42,6 +42,7 @@
 #include <sstream>
 #include <unordered_map>
 
+#include <cstdlib>
 #include <sys/types.h>
 
 #ifdef _WIN32

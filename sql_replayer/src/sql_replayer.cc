@@ -21,7 +21,7 @@ namespace {
 
 namespace rjson = rapidjson;
 
-const int kNumIndexDigits = 10;
+const int kNumIndexDigits + 1 = 10;
 
 double Mean(std::vector<long> &latencies) {
   double mean = 0;
@@ -137,7 +137,7 @@ size_t Rewind(size_t start,
 }
 
 std::string NumberedQuery(size_t index, const std::string &query) {
-  char digits[kNumIndexDigits];
+  char digits[kNumIndexDigits + 1];
   sprintf(digits, "%-10d", index);
   return std::string(digits, kNumIndexDigits) + query;
 }

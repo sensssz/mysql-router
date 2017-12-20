@@ -344,19 +344,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       log_error("Read from client fails");
       break;
     }
-    auto iter = prefetches.find(query);
-    int server_for_current_query = -1;
-    if (iter != prefetches.end()) {
-      log_debug("Prediction hits, check for result");
-      if (server_group->IsReadyForQuery(iter->second)) {
-        // Result has been received
-        log_debug("Result has already arrived");
-        packet_size = ::CopyToClient(server_group->GetResult(iter->second), &client_connection);
-      } else {
-        log_debug("Result is pending");
-        server_for_current_query = iter->second;
-      }
-    }
     if (::IsQuery(client_connection.Buffer())) {
       std::string query = ::ExtractQuery(client_connection.Buffer());
       speculator_->CheckBegin(query);

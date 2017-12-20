@@ -32,22 +32,24 @@ void FakeSpeculator::CheckBegin(const std::string &query) {
 std::vector<std::string> FakeSpeculator::Speculate(const std::string &query, int num_speculations) {
   std::vector<std::string> speculations;
   // return std::move(speculations);
-  if (!start_) {
+  if (!start_ || current_query_ == -1) {
     return speculations;
   }
-  int rand_num = dist_(rand_gen_);
   current_query_++;
+  int rand_num = dist_(rand_gen_);
   if (rand_num <= 100) {
     auto &next_query = queries_[current_query_];
-    if (next_query == "BEGIN" || next_query == "COMMIT") {
-      log_debug("Cannot predict BEGIN or COMMIT");
-    } else {
+    if (next_query.find("SELECT") == 0) {
       log_debug("Will make prediction hit with %s", next_query.c_str());
       speculations.push_back(next_query);
       num_speculations--;
+    } else {
+      log_debug("Cannot predict writes");
     }
   }
-  speculations.insert(speculations.end(), fake_speculations.begin(), fake_speculations.begin() + num_speculations);
+  if (num_speculations > 0) {
+    speculations.insert(speculations.end(), fake_speculations.begin(), fake_speculations.begin() + num_speculations);
+  }
 
   return std::move(speculations);
 }

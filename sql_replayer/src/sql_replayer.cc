@@ -21,6 +21,8 @@ namespace {
 
 namespace rjson = rapidjson;
 
+const int kNumIndexDigits = 10;
+
 double Mean(std::vector<long> &latencies) {
   double mean = 0;
   double i = 1;
@@ -129,6 +131,12 @@ size_t Rewind(size_t start,
   return 0;
 }
 
+std::string NumberedQuery(size_t index, const std::string &query) {
+  char digits[kNumIndexDigits];
+  sprintf(digits, "%-10d", index);
+  return std::string(digits, kNumIndexDigits) + query;
+}
+
 size_t Replay(const std::string &server,
               size_t start,
               std::vector<long> &latencies,
@@ -143,13 +151,11 @@ size_t Replay(const std::string &server,
   std::chrono::high_resolution_clock::time_point trx_start;
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
   stmt->execute("set autocommit=0");
-  double total_think_time = 0;
   for (size_t i = start; i < total; i++) {
     auto &query = trace[i];
     std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
     if (query.second > 0) {
       std::this_thread::sleep_for(std::chrono::microseconds(query.second));
-      total_think_time += query.second;
     }
     if (skipped_queries.find(i) != skipped_queries.end()) {
       continue;
@@ -159,14 +165,12 @@ size_t Replay(const std::string &server,
       auto trx_end = std::chrono::high_resolution_clock::now();
       auto duration = std::chrono::duration_cast<std::chrono::microseconds>(trx_end - trx_start);
       latencies.push_back(duration.count());
-      std::cout << "    " << total_think_time << "    " << duration.count() << "    " << duration.count() - total_think_time << "       ";
     } else {
       if (query.first == "BEGIN") {
         trx_start = std::chrono::high_resolution_clock::now();
-        total_think_time = 0;
       }
       try {
-        bool is_select = stmt->execute(query.first);
+        bool is_select = stmt->execute(NumberedQuery(i, query.first));
         if (is_select) {
           delete stmt->getResultSet();
         }
@@ -187,7 +191,7 @@ size_t Replay(const std::string &server,
           i = Rewind(i, trace) - 1;
         }
         // Skip for duplicates or syntax error
-        else if (e.getErrorCode() != 1062 && 
+        else if (e.getErrorCode() != 1062 &&
                  e.getErrorCode() != 1065 &&
                  e.getErrorCode() != 2014) {
           return total;

@@ -96,11 +96,11 @@ std::pair<int, std::string> ExtractQuery(uint8_t *buffer) {
   int query_index = -1;
   if (isdigit(query[0])) {
     query[kNumIndexDigits - 1] = '\0';
-    index = atoi(query);
+    query_index = atoi(query);
     query += kNumIndexDigits;
     query_size -= kNumIndexDigits;
   }
-  return std::make_pair(query_size, std::string(query, query_size));
+  return std::make_pair(query_index, std::string(query, query_size));
 }
 
 std::string ToLower(const std::string &query) {
@@ -144,7 +144,7 @@ bool DoSpeculation(
         return false;
       }
       prefetches[speculation] = index;
-      servers_in_use.insert(i);
+      servers_in_use.insert(index);
     }
   }
   return true;

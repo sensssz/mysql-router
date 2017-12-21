@@ -21,7 +21,7 @@ namespace {
 
 namespace rjson = rapidjson;
 
-const int kNumIndexDigits + 1 = 10;
+const int kNumIndexDigits = 10;
 
 double Mean(std::vector<long> &latencies) {
   double mean = 0;
@@ -144,7 +144,8 @@ std::string NumberedQuery(size_t index, const std::string &query) {
 
 size_t Replay(const std::string &server,
               size_t start,
-              std::vector<long> &latencies,
+              std::vector<long> &query_latencies,
+              std::vector<long> &trx_latencies,
               std::set<size_t> &skipped_queries,
               const std::vector<std::pair<std::string, long>> &trace) {
   auto conn = std::move(::ConnectToDb(server));
@@ -169,13 +170,20 @@ size_t Replay(const std::string &server,
       conn->commit();
       auto trx_end = std::chrono::high_resolution_clock::now();
       auto duration = std::chrono::duration_cast<std::chrono::microseconds>(trx_end - trx_start);
-      latencies.push_back(duration.count());
+      trx_latencies.push_back(duration.count());
     } else {
-      if (query.first == "BEGIN") {
+      bool is_begin = query.first == "BEGIN";
+      if (is_begin) {
         trx_start = std::chrono::high_resolution_clock::now();
       }
       try {
+        auto start = std::chrono::high_resolution_clock::now();
         bool is_select = stmt->execute(NumberedQuery(i, query.first));
+        if (!is_begin) {
+          auto end = std::chrono::high_resolution_clock::now();
+          auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+          query_latencies.push_back(static_cast<long>(duration.count()));
+        }
         if (is_select) {
           delete stmt->getResultSet();
         }
@@ -246,12 +254,14 @@ int main(int argc, char *argv[]) {
   std::string latency_file(argv[3]);
   auto trace = ::LoadWorkloadTrace(workload_file);
   size_t start = 0;
-  std::vector<long> latencies;
+  std::vector<long> trx_latencies;
+  std::vector<long> query_latencies;
   std::set<size_t> skipped_queries;
   while(start != trace.size()) {
     RestartServers();
-    start = Replay(server, start, latencies, skipped_queries, trace);
+    start = Replay(server, start, query_latencies, trx_latencies, skipped_queries, trace);
   }
-  ::DumpLatencies(std::move(latencies), latency_file);
+  ::DumpLatencies(std::move(trx_latencies), "trx_" + latency_file);
+  ::DumpLatencies(std::move(query_latencies), "query_" + latency_file);
   return 0;
 }

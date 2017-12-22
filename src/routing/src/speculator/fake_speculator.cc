@@ -42,10 +42,10 @@ std::vector<std::string> FakeSpeculator::Speculate(const std::string &query, int
     if (next_query.find("SELECT") == 0) {
       log_debug("Will make prediction hit with %s", next_query.c_str());
       speculations.push_back(next_query);
-      num_speculations--;
     } else {
       log_debug("Cannot predict writes");
     }
+    num_speculations--;
   }
   if (num_speculations > 0) {
     speculations.insert(speculations.end(), fake_speculations.begin(), fake_speculations.begin() + num_speculations);

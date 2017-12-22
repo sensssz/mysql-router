@@ -15,8 +15,14 @@ public:
       current_query_++;
     }
   }
+  virtual int GetQueryIndex() override {
+    return current_query_;
+  }
   virtual void SetQueryIndex(int query_index) override {
     current_query_ = query_index;
+  }
+  virtual std::vector<std::string> Speculate(const std::string &query) override {
+    return Speculate(query, 1);
   }
   virtual std::vector<std::string> Speculate(const std::string &query, int num_speculations=1) override;
 

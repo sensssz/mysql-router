@@ -368,7 +368,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       size_t packet_size = 0;
       if (::IsWrite(query)) {
         log_debug("Got write query, forward it to all servers...");
-        speculator_->SkipQuery();
         if (!server_group->ForwardToAll(query)) {
           log_error("Failed to forward query to servers");
           break;

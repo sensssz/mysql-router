@@ -19,7 +19,11 @@ FakeSpeculator::FakeSpeculator(const std::string &filename) : start_(false), cur
   std::string line;
   while (!infile.eof()) {
     std::getline(infile, line);
-    queries_.push_back(line);
+    if (line.find("SELECT") ||
+        line.find("BEGIN") ||
+        line.find("COMMIT")) {
+      queries_.push_back(line);
+    }
   }
 }
 

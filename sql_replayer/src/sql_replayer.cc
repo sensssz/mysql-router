@@ -85,7 +85,7 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &f
     } else {
       num_writes++;
       current_size++;
-      // times.push_back(think_time);
+      res.pop_back();
     }
   }
   std::cout << "Workload trace loaded" << std::endl;

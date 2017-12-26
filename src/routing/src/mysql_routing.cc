@@ -33,6 +33,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <future>
@@ -118,6 +119,12 @@ bool IsWrite(const std::string &query) {
   return !IsRead(query);
 }
 
+long GetDuration(std::chrono::time_point<std::chrono::high_resolution_clock> &start) {
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  return static_cast<long>(duration.count());
+}
+
 // The reserved_server is necessary because there may be a gap between
 // checking the result has arrived and the checks below.
 bool DoSpeculation(
@@ -125,6 +132,7 @@ bool DoSpeculation(
   ServerGroup *server_group,
   int reserved_server,
   Speculator *speculator,
+  std::vector<long> &speculation_wait_time,
   std::unordered_map<std::string, int> &prefetches) {
   prefetches.clear();
   auto speculations = speculator->Speculate(query);
@@ -134,6 +142,7 @@ bool DoSpeculation(
   std::set<int> servers_in_use;
   servers_in_use.insert(reserved_server);
   for (const auto &speculation : speculations) {
+    auto start = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < server_group->Size(); i++) {
       auto index = static_cast<int>(i);
       if (servers_in_use.find(index) != servers_in_use.end() ||
@@ -146,6 +155,7 @@ bool DoSpeculation(
       prefetches[speculation] = index;
       servers_in_use.insert(index);
     }
+    speculation_wait_time.push_back(GetDuration(start));
   }
   return true;
 }
@@ -294,6 +304,12 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::unordered_map<std::string, int> prefetches;
   size_t num_reads = 0;
   size_t num_misses = 0;
+  size_t num_instants = 0;
+  size_t num_waits = 0;
+  std::vector<long> query_process_time;
+  std::vector<long> query_wait_time;
+  std::vector<long> speculation_wait_time;
+  std::vector<long> network_latency;
 
   auto server_group = destination_->GetServerGroup();
   if (server_group.get() == nullptr) {
@@ -358,6 +374,13 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       log_error("Read from client fails");
       break;
     }
+
+    if (num_reads % 100 == 0) {
+      std::cerr << "Reads\t\tMisses\t\tinstants\t\tWaits" << std::endl;
+      std::cerr << num_reads << "\t\t" << num_misses << "\t\t" << num_instants << "\t\t" << num_waits << std::endl;
+
+    }
+
     if (::IsQuery(client_connection.Buffer())) {
       auto pair = ::ExtractQuery(client_connection.Buffer());
       int query_index = pair.first;
@@ -382,7 +405,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         packet_size = ::CopyToClient(server_group->GetResult(first_available), &client_connection);
         log_debug("Do speculations");
         if (!::DoSpeculation(query, server_group.get(), -1,
-                           speculator_.get(), prefetches)) {
+                             speculation_wait_time, speculator_.get(), prefetches)) {
           log_error("Failed to do speculations");
           break;
         }
@@ -400,6 +423,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         // the result has already been retrieved, then that server can be
         // reused to process the speculative query. Therefore, we first check
         // for prediction hit, and then check whether the result has arrived.
+        auto query_process_start = std::chrono::high_resolution_clock::now();
         log_debug("Got read query");
         num_reads++;
         auto iter = prefetches.find(query);
@@ -410,11 +434,13 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
             // Result has been received
             log_debug("Result has already arrived");
             packet_size = ::CopyToClient(server_group->GetResult(iter->second), &client_connection);
+            num_instants++;
           } else {
             log_debug("Result is pending");
             server_for_current_query = iter->second;
           }
         } else {
+          num_misses++;
           // Prediction not hit, send it now.
           server_for_current_query = server_group->GetAvailableServer();
           log_debug("Prediction fails, execute it on server %d", server_for_current_query);
@@ -428,13 +454,16 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           }
         }
         log_debug("Do speculations");
+        auto query_wait_start = std::chrono::high_resolution_clock::now();
         if (!::DoSpeculation(query, server_group.get(), server_for_current_query,
-                           speculator_.get(), prefetches)) {
+                             speculation_wait_time, speculator_.get(), prefetches)) {
           log_error("Failed to do speculations");
           break;
         }
+        query_wait_time.push_back(GetDuration(query_wait_start));
         // Now either wait for the result or we already have the result
         if (server_for_current_query != -1) {
+          num_waits++;
           log_debug("Waiting for pending result");
           while (!server_group->IsReadyForQuery(server_for_current_query)) {
             ;
@@ -443,10 +472,13 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           packet_size = ::CopyToClient(server_group->GetResult(server_for_current_query), &client_connection);
         }
         log_debug("Send result back to client");
+        query_process_time.push_back(GetDuration(query_process_start));
+        auto network_start = std::chrono::high_resolution_clock::now();
         if (client_connection.Send(packet_size) <= 0) {
           log_error("Write to client fails");
           break;
         }
+        network_latency.push_back(GetDuration(network_start));
         bytes_down += packet_size;
       }
     } else {

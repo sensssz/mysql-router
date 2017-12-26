@@ -405,7 +405,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         packet_size = ::CopyToClient(server_group->GetResult(first_available), &client_connection);
         log_debug("Do speculations");
         if (!::DoSpeculation(query, server_group.get(), -1,
-                             speculation_wait_time, speculator_.get(), prefetches)) {
+                             speculator_.get(), speculation_wait_time, prefetches)) {
           log_error("Failed to do speculations");
           break;
         }
@@ -456,7 +456,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         log_debug("Do speculations");
         auto query_wait_start = std::chrono::high_resolution_clock::now();
         if (!::DoSpeculation(query, server_group.get(), server_for_current_query,
-                             speculation_wait_time, speculator_.get(), prefetches)) {
+                             speculator_.get(), speculation_wait_time, prefetches)) {
           log_error("Failed to do speculations");
           break;
         }

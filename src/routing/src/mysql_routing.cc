@@ -87,6 +87,16 @@ const char *kDefaultReplicaSetName = "default";
 const int kAcceptorStopPollInterval_ms = 1000;
 const int kNumIndexDigits = 10;
 
+double Mean(std::vector<long> &latencies) {
+  double mean = 0;
+  double i = 1;
+  for (auto latency : latencies) {
+    mean += (latency - mean) / i;
+    i++;
+  }
+  return mean;
+}
+
 bool IsQuery(uint8_t *buffer) {
   return buffer[kMySQLHeaderLen] == static_cast<uint8_t>(COM_QUERY);
 }

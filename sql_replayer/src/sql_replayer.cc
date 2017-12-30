@@ -161,7 +161,7 @@ size_t Replay(const std::string &server,
   for (size_t i = start; i < total; i++) {
     auto &query = trace[i];
     std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
-    if (query.second > 0) {
+    if (query.first != "BEGIN" && query.second > 0) {
       std::this_thread::sleep_for(std::chrono::microseconds(query.second));
     }
     if (skipped_queries.find(i) != skipped_queries.end()) {

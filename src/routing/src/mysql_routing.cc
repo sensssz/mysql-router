@@ -155,19 +155,24 @@ bool DoSpeculation(
   }
   std::set<int> servers_in_use;
   servers_in_use.insert(reserved_server);
+  bool done = false;
   for (const auto &speculation : speculations) {
+    done = false;
     auto start = std::chrono::high_resolution_clock::now();
-    for (size_t i = 0; i < server_group->Size(); i++) {
-      auto index = static_cast<int>(i);
-      if (servers_in_use.find(index) != servers_in_use.end() ||
-          !server_group->IsReadyForQuery(i)) {
-        continue;
+    while (!done) {
+      for (size_t i = 0; i < server_group->Size(); i++) {
+        auto index = static_cast<int>(i);
+        if (servers_in_use.find(index) != servers_in_use.end() ||
+            !server_group->IsReadyForQuery(i)) {
+          continue;
+        }
+        if (!server_group->SendQuery(i, speculation)) {
+          return false;
+        }
+        prefetches[speculation] = index;
+        servers_in_use.insert(index);
+        done = true;
       }
-      if (!server_group->SendQuery(i, speculation)) {
-        return false;
-      }
-      prefetches[speculation] = index;
-      servers_in_use.insert(index);
     }
     speculation_wait_time.push_back(GetDuration(start));
   }

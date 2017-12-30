@@ -90,7 +90,7 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &f
     }
   }
   std::cout << "Workload trace loaded" << std::endl;
-  std::cout << "Average think time is " << Mean(times) << " ms" << std::endl;
+  std::cout << "Average think time is " << Mean(times) << "us" << std::endl;
   std::cout << num_reads << " reads and " << num_writes << " writes" << std::endl;
   std::cout << "Average transaction size is " << Mean(sizes) << std::endl;
   return std::move(res);

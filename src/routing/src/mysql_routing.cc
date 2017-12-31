@@ -172,6 +172,7 @@ bool DoSpeculation(
         prefetches[speculation] = index;
         servers_in_use.insert(index);
         done = true;
+        break;
       }
     }
     speculation_wait_time.push_back(GetDuration(start));

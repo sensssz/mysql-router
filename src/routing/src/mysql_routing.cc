@@ -79,6 +79,8 @@ using mysqlrouter::URIQuery;
 using mysqlrouter::TCPAddress;
 using mysqlrouter::is_valid_socket_name;
 
+using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
+
 namespace {
 
 int kListenQueueSize = 1024;
@@ -129,12 +131,17 @@ bool IsWrite(const std::string &query) {
   return !IsRead(query);
 }
 
-std::chrono::time_point<std::chrono::high_resolution_clock> Now() {
+TimePoint Now() {
   return std::chrono::high_resolution_clock::now();
 }
 
-long GetDuration(std::chrono::time_point<std::chrono::high_resolution_clock> &start) {
+long GetDuration(TimePoint &start) {
   auto end = Now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  return static_cast<long>(duration.count());
+}
+
+long GetDuration(TimePoint &start, TimePoint &end) {
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   return static_cast<long>(duration.count());
 }
@@ -326,6 +333,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   size_t num_misses = 0;
   size_t num_instants = 0;
   size_t num_waits = 0;
+  std::vector<long> think_time;
   std::vector<long> query_process_time;
   std::vector<long> hit_time;
   std::vector<long> miss_time;
@@ -333,6 +341,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::vector<long> query_wait_time;
   std::vector<long> speculation_wait_time;
   std::vector<long> network_latency;
+  std::chrono::time_point<std::chrono::high_resolution_clock> prev_query;
 
   auto server_group = destination_->GetServerGroup();
   if (server_group.get() == nullptr) {
@@ -401,8 +410,8 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
     if (num_reads % 100 == 0) {
       std::cerr << "Reads\t\tMisses\t\tinstants\t\tWaits" << std::endl;
       std::cerr << num_reads << "\t\t" << num_misses << "\t\t" << num_instants << "\t\t" << num_waits << std::endl;
-      std::cerr << "Query Process\t\tHit\t\tMiss\t\tSpeculation\t\tQuery Wait\t\tNetwork Latency" << std::endl;
-      std::cerr << Mean(query_process_time) << "\t\t" << Mean(hit_time) << "\t\t" << Mean(miss_time) << "\t\t" << Mean(speculation_time) << "\t\t" << Mean(query_wait_time) << "\t\t" << Mean(network_latency) << std::endl;
+      std::cerr << "Think\t\tQuery Process\t\tHit\t\tMiss\t\tSpeculation\t\tQuery Wait\t\tNetwork Latency" << std::endl;
+      std::cerr << Mean(think_time) << "\t\t" << Mean(query_process_time) << "\t\t" << Mean(hit_time) << "\t\t" << Mean(miss_time) << "\t\t" << Mean(speculation_time) << "\t\t" << Mean(query_wait_time) << "\t\t" << Mean(network_latency) << std::endl;
     }
 
     if (::IsQuery(client_connection.Buffer())) {
@@ -414,6 +423,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       log_debug("Query is %s", query.c_str());
       size_t packet_size = 0;
       if (::IsWrite(query)) {
+        prev_query = Now();
         log_debug("Got write query, forward it to all servers...");
         if (!server_group->ForwardToAll(query)) {
           log_error("Failed to forward query to servers");
@@ -448,6 +458,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         // reused to process the speculative query. Therefore, we first check
         // for prediction hit, and then check whether the result has arrived.
         auto query_process_start = Now();
+        think_time.push_back(GetDuration(prev_query, query_process_start));
         log_debug("Got read query");
         num_reads++;
         auto iter = prefetches.find(query);

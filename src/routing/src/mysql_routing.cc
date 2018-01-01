@@ -36,6 +36,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <fstream>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -97,6 +98,13 @@ double Mean(std::vector<long> &latencies) {
     i++;
   }
   return mean;
+}
+
+void DumpIndices(std::vector<int> &indices) {
+  std::ofstream index_file("stragglers");
+  for (auto &index : indices) {
+    index_file << index << std::endl;
+  }
 }
 
 bool IsQuery(uint8_t *buffer) {
@@ -339,6 +347,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::vector<long> miss_time;
   std::vector<long> speculation_time;
   std::vector<long> query_wait_time;
+  std::vector<int> wait_queries;
   std::vector<long> speculation_wait_time;
   std::vector<long> network_latency;
   std::chrono::time_point<std::chrono::high_resolution_clock> prev_query;
@@ -419,6 +428,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
     if (::IsQuery(client_connection.Buffer())) {
       auto pair = ::ExtractQuery(client_connection.Buffer());
       int query_index = pair.first;
+      if (query_index == 6399) {
+        DumpIndices(wait_queries);
+      }
       std::string query = pair.second;
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);
@@ -506,6 +518,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         auto query_wait_start = Now();
         if (server_for_current_query != -1) {
           num_waits++;
+          wait_queries.push_back(query_index);
           log_debug("Waiting for pending result");
           while (!server_group->IsReadyForQuery(server_for_current_query)) {
             ;

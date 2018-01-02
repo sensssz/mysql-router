@@ -516,8 +516,8 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         }
         speculation_time.push_back(GetDuration(speculation_start));
         // Now either wait for the result or we already have the result
-        auto query_wait_start = Now();
         if (server_for_current_query != -1) {
+          auto query_wait_start = Now();
           num_waits++;
           wait_queries.push_back(query_index);
           wait_think_time.push_back(think_time.back());
@@ -527,8 +527,8 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           }
           log_debug("Result has arrived");
           packet_size = ::CopyToClient(server_group->GetResult(server_for_current_query), &client_connection);
+          query_wait_time.push_back(GetDuration(query_wait_start));
         }
-        query_wait_time.push_back(GetDuration(query_wait_start));
         log_debug("Send result back to client");
         query_process_time.push_back(GetDuration(query_process_start));
         auto network_start = Now();

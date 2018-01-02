@@ -347,6 +347,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::vector<long> miss_time;
   std::vector<long> speculation_time;
   std::vector<long> query_wait_time;
+  std::vector<long> wait_think_time;
   std::vector<int> wait_queries;
   std::vector<long> speculation_wait_time;
   std::vector<long> network_latency;
@@ -419,9 +420,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
     if (num_reads % 100 == 0) {
       std::cerr << "Reads\t\tMisses\t\tinstants\t\tWaits" << std::endl;
       std::cerr << num_reads << "\t\t" << num_misses << "\t\t" << num_instants << "\t\t" << num_waits << std::endl;
-      std::cerr << "Think\t\tQuery Process\t\tHit\t\tMiss\t\tSpeculation\t\tQuery Wait\t\tNetwork Latency" << std::endl;
-      std::cerr << Mean(think_time) << "\t\t" << Mean(query_process_time) << "\t\t" << Mean(hit_time) << "\t\t" << Mean(miss_time) << "\t\t" << Mean(speculation_time) << "\t\t" << Mean(query_wait_time) << "\t\t" << Mean(network_latency) << std::endl;
-      std::cerr << think_time.size() << "\t\t" << query_process_time.size() << "\t\t" << hit_time.size() << "\t\t" << miss_time.size() << "\t\t" << speculation_time.size() << "\t\t" << query_wait_time.size() << "\t\t" << network_latency.size() << std::endl;
+      std::cerr << "Think\t\tQuery Process\t\tHit\t\tMiss\t\tSpeculation\t\tQuery Wait\t\tWait Think\t\tNetwork Latency" << std::endl;
+      std::cerr << Mean(think_time) << "\t\t" << Mean(query_process_time) << "\t\t" << Mean(hit_time) << "\t\t" << Mean(miss_time) << "\t\t" << Mean(speculation_time) << "\t\t" << Mean(query_wait_time) << "\t\t" << Mean(wait_think_time) << "\t\t" << Mean(network_latency) << std::endl;
+      std::cerr << think_time.size() << "\t\t" << query_process_time.size() << "\t\t" << hit_time.size() << "\t\t" << miss_time.size() << "\t\t" << speculation_time.size() << "\t\t" << query_wait_time.size() << "\t\t" << wait_think_time << "\t\t" << network_latency.size() << std::endl;
       std::cerr << std::endl;
     }
 
@@ -519,6 +520,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         if (server_for_current_query != -1) {
           num_waits++;
           wait_queries.push_back(query_index);
+          wait_think_time.push_back(think_time.back());
           log_debug("Waiting for pending result");
           while (!server_group->IsReadyForQuery(server_for_current_query)) {
             ;

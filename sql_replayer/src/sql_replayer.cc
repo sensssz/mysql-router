@@ -143,6 +143,23 @@ std::string NumberedQuery(size_t index, const std::string &query) {
   return std::string(digits, kNumIndexDigits) + query;
 }
 
+void WarmUp(sql::Connection *connection,
+            const std::vector<std::pair<std::string, long>> &trace) {
+  std::unique_ptr<sql::Statement> stmt(conn->createStatement());
+  std::cout << "Warm up starts" << std::endl;
+  auto total = trace.size();
+  for (size_t i = 0; i < trace.size(); i++) {
+    std::cout << i + 1 << '/' << total << std::flush;
+    auto &query = trace[i];
+    if (query.first.find("SELECT") != 0) {
+      continue;
+    }
+    stmt->execute(NumberedQuery(i, query.first));
+    delete stmt->getResultSet();
+  }
+  std::cout << std::endl << "Warm up complets" << std::endl;
+}
+
 size_t Replay(const std::string &server,
               size_t start,
               std::vector<long> &query_latencies,
@@ -153,6 +170,7 @@ size_t Replay(const std::string &server,
   if (conn.get() == nullptr) {
     exit(EXIT_FAILURE);
   }
+  WarmUp(connection.get(), trace);
   start = Rewind(start, trace);
   auto total = trace.size();
   std::chrono::high_resolution_clock::time_point trx_start;

@@ -431,7 +431,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       auto pair = ::ExtractQuery(client_connection.Buffer());
       int query_index = pair.first;
       if (query_index == 6399) {
-        DumpWaits(wait_queries);
+        DumpWaits(wait_queries, query_wait_time);
       }
       std::string query = pair.second;
       speculator_->CheckBegin(query);

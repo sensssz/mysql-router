@@ -337,6 +337,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   bool handshake_done = false;
   Connection client_connection(client, routing::SocketOperations::instance());
   std::unordered_map<std::string, int> prefetches;
+  bool has_begun = false;
   size_t num_reads = 0;
   size_t num_misses = 0;
   size_t num_instants = 0;
@@ -435,6 +436,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       std::string query = pair.second;
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);
+      has_begun = has_begun || query == "BEGIN";
       log_debug("Query is %s", query.c_str());
       size_t packet_size = 0;
       if (::IsWrite(query)) {
@@ -473,7 +475,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         // reused to process the speculative query. Therefore, we first check
         // for prediction hit, and then check whether the result has arrived.
         auto query_process_start = Now();
-        think_time.push_back(GetDuration(prev_query, query_process_start));
+        if (has_begun) {
+          think_time.push_back(GetDuration(prev_query, query_process_start));
+        }
         log_debug("Got read query");
         num_reads++;
         auto iter = prefetches.find(query);
@@ -490,7 +494,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
             log_debug("Result is pending");
             server_for_current_query = iter->second;
           }
-          hit_time.push_back(GetDuration(hit_start));
+          if (has_begun) {
+            hit_time.push_back(GetDuration(hit_start));
+          }
         } else {
           auto miss_start = Now();
           num_misses++;
@@ -505,7 +511,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
             log_error("Failed to send query to server");
             break;
           }
-          miss_time.push_back(GetDuration(miss_start));
+          if (has_begun) {
+            miss_time.push_back(GetDuration(miss_start));
+          }
         }
         auto speculation_start = Now();
         log_debug("Do speculations");
@@ -514,7 +522,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           log_error("Failed to do speculations");
           break;
         }
-        speculation_time.push_back(GetDuration(speculation_start));
+        if (has_begun) {
+          speculation_time.push_back(GetDuration(speculation_start));
+        }
         // Now either wait for the result or we already have the result
         if (server_for_current_query != -1) {
           auto query_wait_start = Now();
@@ -526,17 +536,23 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
             ;
           }
           log_debug("Result has arrived");
-          packet_size = ::CopyToClient(server_group->GetResult(server_for_current_query), &client_connection);
-          query_wait_time.push_back(GetDuration(query_wait_start));
+          packet_size = ::CopyToClie
+          if (has_begun) {nt(server_group->GetResult(server_for_current_query), &client_connection);
+            query_wait_time.push_back(GetDuration(query_wait_start));
+          }
         }
-        log_debug("Send result back to client");
-        query_process_time.push_back(GetDuration(query_process_start));
+        log_debug("Send result back t
+        if (has_begun) {o client");
+          query_process_time.push_back(GetDuration(query_process_start));
+        }
         auto network_start = Now();
         if (client_connection.Send(packet_size) <= 0) {
           log_error("Write to client fails");
           break;
         }
-        network_latency.push_back(GetDuration(network_start));
+        if (has_begun) {
+          network_latency.push_back(GetDuration(network_start));
+        }
         bytes_down += packet_size;
       }
     } else {

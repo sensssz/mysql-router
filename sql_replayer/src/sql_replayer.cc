@@ -170,7 +170,7 @@ size_t Replay(const std::string &server,
   if (conn.get() == nullptr) {
     exit(EXIT_FAILURE);
   }
-  WarmUp(connection.get(), trace);
+  WarmUp(conn.get(), trace);
   start = Rewind(start, trace);
   auto total = trace.size();
   std::chrono::high_resolution_clock::time_point trx_start;

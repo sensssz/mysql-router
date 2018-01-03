@@ -143,7 +143,7 @@ std::string NumberedQuery(size_t index, const std::string &query) {
   return std::string(digits, kNumIndexDigits) + query;
 }
 
-void WarmUp(sql::Connection *connection,
+void WarmUp(sql::Connection *conn,
             const std::vector<std::pair<std::string, long>> &trace) {
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
   std::cout << "Warm up starts" << std::endl;

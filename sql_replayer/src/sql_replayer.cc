@@ -149,7 +149,7 @@ void WarmUp(sql::Connection *conn,
   std::cout << "Warm up starts" << std::endl;
   auto total = trace.size();
   for (size_t i = 0; i < trace.size(); i++) {
-    std::cout << i + 1 << '/' << total << std::flush;
+    std::cout << '\r' << i + 1 << '/' << total << std::flush;
     auto &query = trace[i];
     if (query.first.find("SELECT") != 0) {
       continue;

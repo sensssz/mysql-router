@@ -477,9 +477,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         auto query_process_start = Now();
         if (has_begun) {
           think_time.push_back(GetDuration(prev_query, query_process_start));
+          num_reads++;
         }
         log_debug("Got read query");
-        num_reads++;
         auto iter = prefetches.find(query);
         int server_for_current_query = -1;
         if (iter != prefetches.end()) {
@@ -489,7 +489,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
             // Result has been received
             log_debug("Result has already arrived");
             packet_size = ::CopyToClient(server_group->GetResult(iter->second), &client_connection);
-            num_instants++;
+            if (has_begun) {
+              num_instants++;
+            }
           } else {
             log_debug("Result is pending");
             server_for_current_query = iter->second;
@@ -499,7 +501,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           }
         } else {
           auto miss_start = Now();
-          num_misses++;
+          if (has_begun) {
+            num_misses++;
+          }
           // Prediction not hit, send it now.
           server_for_current_query = server_group->GetAvailableServer();
           log_debug("Prediction fails, execute it on server %d", server_for_current_query);
@@ -528,9 +532,11 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         // Now either wait for the result or we already have the result
         if (server_for_current_query != -1) {
           auto query_wait_start = Now();
-          num_waits++;
-          wait_queries.push_back(query_index);
-          wait_think_time.push_back(think_time.back());
+          if (has_begun) {
+            num_waits++;
+            wait_queries.push_back(query_index);
+            wait_think_time.push_back(think_time.back());
+          }
           log_debug("Waiting for pending result");
           while (!server_group->IsReadyForQuery(server_for_current_query)) {
             ;

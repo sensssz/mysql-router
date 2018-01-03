@@ -418,7 +418,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       break;
     }
 
-    if (num_reads % 100 == 0) {
+    if (num_reads > 0 && num_reads % 100 == 0) {
       std::cerr << "Reads\t\tMisses\t\tinstants\t\tWaits" << std::endl;
       std::cerr << num_reads << "\t\t" << num_misses << "\t\t" << num_instants << "\t\t" << num_waits << std::endl;
       std::cerr << "Think\t\tQuery Process\t\tHit\t\tMiss\t\tSpeculation\t\tQuery Wait\t\tWait Think\t\tNetwork Latency" << std::endl;

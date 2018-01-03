@@ -100,10 +100,10 @@ double Mean(std::vector<long> &latencies) {
   return mean;
 }
 
-void DumpIndices(std::vector<int> &indices) {
-  std::ofstream index_file("stragglers");
-  for (auto &index : indices) {
-    index_file << index << std::endl;
+void DumpWaits(std::vector<int> &indices, std::vector<long> &wait_times) {
+  std::ofstream waits("wait_queries");
+  for (size_t i = 0; i < indices.size(); i++) {
+    waits << indices[i] << ',' << wait_times[i] << std::endl;
   }
 }
 
@@ -431,7 +431,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       auto pair = ::ExtractQuery(client_connection.Buffer());
       int query_index = pair.first;
       if (query_index == 6399) {
-        DumpIndices(wait_queries);
+        DumpWaits(wait_queries);
       }
       std::string query = pair.second;
       speculator_->CheckBegin(query);

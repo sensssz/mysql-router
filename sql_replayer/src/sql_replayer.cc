@@ -246,16 +246,16 @@ void DumpLatencies(std::vector<long> &&latencies, const std::string &file) {
 }
 
 void RestartServers() {
-  system("ssh server4 /users/POTaDOS/.local/bin/mrstart");
+  system("/users/POTaDOS/SQP/.local/bin/mrstart");
   for (auto i = 1; i <= 2; i++) {
     auto command = "ssh server" + std::to_string(i) + R"( /bin/bash <<EOF
       source .bashrc;
-      ~/.local/mysql/support-files/mysql.server stop;
-      echo '' > ~/.local/mysql/mysqld.log;
+      ~/SQP/.local/mysql/support-files/mysql.server stop;
+      echo '' > ~/SQP/.local/mysql/mysqld.log;
       rm -rf ~/.local/mysql/data;
       cp -r ~/SQP/lobsters ~/.local/mysql/data;
       sleep 5s;
-      ~/.local/mysql/support-files/mysql.server start;
+      ~/SQP/.local/mysql/support-files/mysql.server start;
 EOF)";
     system(command.c_str());
   }

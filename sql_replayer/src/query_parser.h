@@ -11,6 +11,7 @@ public:
     static QueryManager manager;
     return manager;
   }
+  void Dump(const std::string &filename);
   int GetIdForTemplate(const std::string &query_template);
   std::string GetTemplateForId(int query_id) const {
     return id_to_template_.at(query_id);
@@ -24,6 +25,7 @@ private:
 class QueryParser {
 public:
   int GetQueryId(const std::string &sql);
+  void DumpTemplates(const std::string &filename);
 
 private:
   std::string ExtractTemplate(const std::string &sql);

@@ -104,6 +104,7 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(
       res.pop_back();
     }
   }
+  parser.DumpTemplates("templates");
   std::cout << "Workload trace loaded" << std::endl;
   std::cout << "Average think time is " << Mean(times) << "us" << std::endl;
   std::cout << num_reads << " reads and " << num_writes << " writes" << std::endl;
@@ -305,5 +306,6 @@ int main(int argc, char *argv[]) {
   }
   ::DumpTrxLatencies(std::move(trx_latencies), latency_file);
   ::DumpQueryLatencies(std::move(query_ids), std::move(query_latencies), latency_file);
+
   return 0;
 }

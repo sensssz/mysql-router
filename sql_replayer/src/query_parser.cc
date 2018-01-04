@@ -1,10 +1,10 @@
 #include "query_parser.h"
 
 #include <algorithm>
+#include <fstream>
 #include <functional>
-#include <cctype>
-#include <locale>
 
+#include <cctype>
 #include <cstdlib>
 
 // trim from start
@@ -40,6 +40,13 @@ int QueryManager::GetIdForTemplate(const std::string &query_template) {
   return id;
 }
 
+void QueryManager::Dump(const std::string &filename) {
+  std::ofstream template_file(filename);
+  for (auto pair : id_to_template_) {
+    template_file << pair.first << ',' << pair.second << std::endl;
+  }
+}
+
 int QueryParser::GetQueryId(const std::string &sql) {
   std::string sql_template = ExtractTemplate(sql);
   return QueryManager::GetInstance().GetIdForTemplate(sql_template);
@@ -49,4 +56,8 @@ std::string QueryParser::ExtractTemplate(const std::string &sql) {
   std::string sql_template = trim(sql);
   sql_template = std::regex_replace(sql_template, argument_pattern_, "?v");
   return std::move(sql_template);
+}
+
+void QueryParser::DumpTemplates(const std::string &filename) {
+  QueryManager::GetInstance().Dump(filename);
 }

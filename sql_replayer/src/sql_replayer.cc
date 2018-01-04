@@ -20,9 +20,25 @@
 
 namespace {
 
+using TimePoint = std::chrono::high_resolution_clock::time_point;
 namespace rjson = rapidjson;
 
 const int kNumIndexDigits = 10;
+
+TimePoint Now() {
+  return std::chrono::high_resolution_clock::now();
+}
+
+long GetDuration(TimePoint &start) {
+  auto end = Now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  return static_cast<long>(duration.count());
+}
+
+long GetDuration(TimePoint &start, TimePoint &end) {
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  return static_cast<long>(duration.count());
+}
 
 double Mean(std::vector<long> &latencies) {
   double mean = 0;
@@ -178,7 +194,7 @@ size_t Replay(const std::string &server,
   WarmUp(conn.get(), trace);
   start = Rewind(start, trace);
   auto total = trace.size();
-  std::chrono::high_resolution_clock::time_point trx_start;
+  TimePoint trx_start;
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
   stmt->execute("set autocommit=0");
   for (size_t i = start; i < total; i++) {
@@ -191,22 +207,21 @@ size_t Replay(const std::string &server,
       continue;
     }
     if (query.first == "COMMIT") {
+      auto start = Now();
       conn->commit();
-      auto trx_end = std::chrono::high_resolution_clock::now();
-      auto duration = std::chrono::duration_cast<std::chrono::microseconds>(trx_end - trx_start);
-      trx_latencies.push_back(duration.count());
+      auto end = Now();
+      trx_latencies.push_back(GetDuration(trx_start, end));
+      query_latencies.push_back(GetDuration(start, end));
     } else {
       bool is_begin = query.first == "BEGIN";
       if (is_begin) {
-        trx_start = std::chrono::high_resolution_clock::now();
+        trx_start = Now();
       }
       try {
-        auto start = std::chrono::high_resolution_clock::now();
+        auto start = Now();
         bool is_select = stmt->execute(NumberedQuery(i, query.first));
         if (!is_begin) {
-          auto end = std::chrono::high_resolution_clock::now();
-          auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-          query_latencies.push_back(static_cast<long>(duration.count()));
+          query_latencies.push_back(GetDuration(start));
         }
         if (is_select) {
           delete stmt->getResultSet();

@@ -27,19 +27,8 @@ static inline std::string trim(std::string s) {
   return s;
 }
 
-static const std::string kRegexArgument = R"((?<!OFFSET |LIMIT )(IN \([^)]+\)|'[^']*'|\b\d+(\.\d+)?\b))";
-static const std::string kRegexNumStr = R"((?<!OFFSET |LIMIT )('[^']*'|\b\d+(\.\d+)?\b))";
-static const std::string kRegexString = R"(\'[^']*')";
-static const std::string kRegexNumber = R"(\b\d+(\.\d+)?\b)";
-static const std::string kRegexStrList = R"(IN \(([^)']+)\))";
-static const std::string kRegexNumList = R"(IN \(([^)0-9]+)\))";
-
+static const std::string kRegexArgument = R"((IN \([^)]+\)|'[^']*'|\b\d+(\.\d+)?\b))";
 std::regex QueryParser::argument_pattern_ = std::regex(kRegexArgument, std::regex_constants::extended | std::regex_constants::optimize);
-std::regex QueryParser::num_str_pattern_ = std::regex(kRegexNumStr, std::regex_constants::extended | std::regex_constants::optimize);
-std::regex QueryParser::string_pattern_ = std::regex(kRegexString, std::regex_constants::extended | std::regex_constants::optimize);
-std::regex QueryParser::number_pattern_ = std::regex(kRegexNumber, std::regex_constants::extended | std::regex_constants::optimize);
-std::regex QueryParser::str_list_pattern_ = std::regex(kRegexStrList, std::regex_constants::extended | std::regex_constants::optimize);
-std::regex QueryParser::num_list_pattern_ = std::regex(kRegexNumList, std::regex_constants::extended | std::regex_constants::optimize);
 
 int QueryManager::GetIdForTemplate(const std::string &query_template) {
   auto iter = template_to_id_.find(query_template);
@@ -58,9 +47,6 @@ int QueryParser::GetQueryId(const std::string &sql) {
 
 std::string QueryParser::ExtractTemplate(const std::string &sql) {
   std::string sql_template = trim(sql);
-  sql_template = std::regex_replace(sql_template, string_pattern_, "?v");
-  sql_template = std::regex_replace(sql_template, number_pattern_, "?v");
-  sql_template = std::regex_replace(sql_template, str_list_pattern_, "?v");
-  sql_template = std::regex_replace(sql_template, num_list_pattern_, "?v");
+  sql_template = std::regex_replace(sql_template, argument_pattern_, "?v");
   return std::move(sql_template);
 }

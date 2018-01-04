@@ -255,7 +255,7 @@ void DumpQueryLatencies(std::vector<int> &&query_ids, std::vector<long> &&latenc
   for (size_t i = 0; i < query_ids.size(); i++) {
     auto query_id = query_ids[i];
     auto latency = latencies[i];
-    latency_file << latency << std::endl;
+    latency_file << query_id << ',' << latency << std::endl;
   }
   latency_file.close();
   std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " queries" << std::endl;

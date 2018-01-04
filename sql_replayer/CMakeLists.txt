@@ -12,6 +12,6 @@ target_include_directories(sql_replayer PRIVATE
   ${USR_LOCAL}/include
   ${USR_LOCAL}/mysql/include)
 target_link_libraries(sql_replayer PRIVATE
-  ${USR_LOCAL}/mysql/lib/libmysqlcppconn.so
+  ${USR_LOCAL}/lib/libmysqlcppconn.so
   ${USR_LOCAL}/mysql/lib/libmysqlclient.so)
 install(TARGETS sql_replayer RUNTIME DESTINATION bin)

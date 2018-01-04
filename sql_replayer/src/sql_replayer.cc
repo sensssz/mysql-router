@@ -35,11 +35,6 @@ long GetDuration(TimePoint &start) {
   return static_cast<long>(duration.count());
 }
 
-long GetDuration(TimePoint &start, TimePoint &end) {
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  return static_cast<long>(duration.count());
-}
-
 double Mean(std::vector<long> &latencies) {
   double mean = 0;
   double i = 1;
@@ -87,7 +82,6 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(
     } else {
       think_time = pair.second - prev_timestamp;
     }
-    query_ids.push_back(parser.GetQueryId(pair.first));
     res.push_back(std::make_pair(pair.first, think_time));
     prev_timestamp = pair.second;
     if (pair.first.find("BEGIN") == 0) {
@@ -102,12 +96,12 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(
       num_reads++;
       current_size++;
       times.push_back(think_time);
+      query_ids.push_back(parser.GetQueryId(pair.first));
     } else {
       num_writes++;
       current_size++;
       times.push_back(think_time);
       res.pop_back();
-      query_ids.pop_back();
     }
   }
   std::cout << "Workload trace loaded" << std::endl;
@@ -207,11 +201,8 @@ size_t Replay(const std::string &server,
       continue;
     }
     if (query.first == "COMMIT") {
-      auto start = Now();
       conn->commit();
-      auto end = Now();
-      trx_latencies.push_back(GetDuration(trx_start, end));
-      query_latencies.push_back(GetDuration(start, end));
+      trx_latencies.push_back(GetDuration(trx_start));
     } else {
       bool is_begin = query.first == "BEGIN";
       if (is_begin) {

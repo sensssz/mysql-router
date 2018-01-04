@@ -42,8 +42,8 @@ int QueryManager::GetIdForTemplate(const std::string &query_template) {
 
 void QueryManager::Dump(const std::string &filename) {
   std::ofstream template_file(filename);
-  for (auto pair : id_to_template_) {
-    template_file << pair.first << ',' << pair.second << std::endl;
+  for (auto pair : template_to_id_) {
+    template_file << pair.second << ',' << pair.first << std::endl;
   }
 }
 

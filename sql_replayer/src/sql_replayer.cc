@@ -144,7 +144,7 @@ size_t Rewind(size_t start,
 
 std::string NumberedQuery(size_t index, const std::string &query) {
   char digits[kNumIndexDigits + 1];
-  sprintf(digits, "%-10d", index);
+  sprintf(digits, "%-10lu", index);
   return std::string(digits, kNumIndexDigits) + query;
 }
 
@@ -298,6 +298,6 @@ int main(int argc, char *argv[]) {
     start = Replay(server, start, query_latencies, trx_latencies, skipped_queries, trace);
   }
   ::DumpTrxLatencies(std::move(trx_latencies), latency_file);
-  ::DumpQueryLatencies(std::move(query_latencies), latency_file);
+  ::DumpQueryLatencies(std::move(query_ids), std::move(query_latencies), latency_file);
   return 0;
 }

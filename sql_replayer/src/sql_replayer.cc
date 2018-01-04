@@ -1,3 +1,4 @@
+#include "query_parser.h"
 #include "mysql_connection.h"
 #include "mysql_driver.h"
 
@@ -41,9 +42,11 @@ std::pair<std::string, long> ParseQuery(const std::string &line) {
   return std::make_pair(std::move(sql), timestamp);
 }
 
-std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &file) {
+std::vector<std::pair<std::string, long>> LoadWorkloadTrace(
+  const std::string &file, std::vector<int> &query_ids) {
   std::vector<std::pair<std::string, long>> res;
   long prev_timestamp = 0;
+  QueryParser parser;
   std::cout << "Loading workload trace..." << std::endl;
   std::ifstream infile(file);
   if (infile.fail()) {
@@ -68,6 +71,7 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &f
     } else {
       think_time = pair.second - prev_timestamp;
     }
+    query_ids.push_back(parser.GetQueryId(pair.first));
     res.push_back(std::make_pair(pair.first, think_time));
     prev_timestamp = pair.second;
     if (pair.first.find("BEGIN") == 0) {
@@ -87,6 +91,7 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(const std::string &f
       current_size++;
       times.push_back(think_time);
       res.pop_back();
+      query_ids.pop_back();
     }
   }
   std::cout << "Workload trace loaded" << std::endl;
@@ -236,13 +241,24 @@ size_t Replay(const std::string &server,
 
 }
 
-void DumpLatencies(std::vector<long> &&latencies, const std::string &file) {
-  std::ofstream latency_file(file);
+void DumpTrxLatencies(std::vector<long> &&latencies, const std::string &file) {
+  std::ofstream latency_file("trx_" + file);
   for (auto latency : latencies) {
     latency_file << latency << std::endl;
   }
   latency_file.close();
   std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " transactions" << std::endl;
+}
+
+void DumpQueryLatencies(std::vector<int> &&query_ids, std::vector<long> &&latencies, const std::string &file) {
+  std::ofstream latency_file("query_" + file);
+  for (size_t i = 0; i < query_ids.size(); i++) {
+    auto query_id = query_ids[i];
+    auto latency = latencies[i];
+    latency_file << latency << std::endl;
+  }
+  latency_file.close();
+  std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " queries" << std::endl;
 }
 
 void RestartServers() {
@@ -271,7 +287,8 @@ int main(int argc, char *argv[]) {
   std::string server(argv[1]);
   std::string workload_file(argv[2]);
   std::string latency_file(argv[3]);
-  auto trace = ::LoadWorkloadTrace(workload_file);
+  std::vector<int> query_ids;
+  auto trace = ::LoadWorkloadTrace(workload_file, query_ids);
   size_t start = 0;
   std::vector<long> trx_latencies;
   std::vector<long> query_latencies;
@@ -280,7 +297,7 @@ int main(int argc, char *argv[]) {
     RestartServers();
     start = Replay(server, start, query_latencies, trx_latencies, skipped_queries, trace);
   }
-  ::DumpLatencies(std::move(trx_latencies), "trx_" + latency_file);
-  ::DumpLatencies(std::move(query_latencies), "query_" + latency_file);
+  ::DumpTrxLatencies(std::move(trx_latencies), latency_file);
+  ::DumpQueryLatencies(std::move(query_latencies), latency_file);
   return 0;
 }

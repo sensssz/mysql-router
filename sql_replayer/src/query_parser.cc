@@ -28,7 +28,7 @@ static inline std::string trim(std::string s) {
 }
 
 static const std::string kRegexArgument = R"((IN \([^)]+\)|'[^']*'|\b\d+(\.\d+)?\b))";
-std::regex QueryParser::argument_pattern_ = std::regex(kRegexArgument, std::regex_constants::extended | std::regex_constants::optimize);
+std::regex QueryParser::argument_pattern_ = std::regex(kRegexArgument, std::regex_constants::optimize);
 
 int QueryManager::GetIdForTemplate(const std::string &query_template) {
   auto iter = template_to_id_.find(query_template);
@@ -42,8 +42,17 @@ int QueryManager::GetIdForTemplate(const std::string &query_template) {
 
 void QueryManager::Dump(const std::string &filename) {
   std::ofstream template_file(filename);
+  std::vector<std::pair<int, std::string>> templates;
   for (auto pair : template_to_id_) {
-    template_file << pair.second << ',' << pair.first << std::endl;
+    templates.push_back(std::make_pair(pair.second, pair.first));
+  }
+  std::sort(templates.begin(), templates.end(),
+    [](const std::pair<int, std::string> &t1,
+       const std::pair<int, std::string> &t2) {
+      return t1.first < t2.first;
+    });
+  for (auto &pair : templates) {
+    template_file << pair.first << ',' << pair.second << std::endl;
   }
 }
 

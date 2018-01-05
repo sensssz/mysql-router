@@ -30,6 +30,7 @@
 #include "plugin_config.h"
 #include "protocol/protocol.h"
 #include "speculator/fake_speculator.h"
+#include "speculator/synthetic_speculator.h"
 
 #include <algorithm>
 #include <array>
@@ -408,6 +409,8 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
   ++info_active_routes_;
   ++info_handled_routes_;
+
+  speculator_.reset(new SyntheticSpeculator());
 
   int pktnr = 0;
   while (true) {

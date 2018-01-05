@@ -85,12 +85,12 @@ std::string NumberedQuery(size_t index, const std::string &query) {
   return std::string(digits, kNumIndexDigits) + query;
 }
 
-std::string GetQueryAllEqual(size_t i) {
+inline std::string GetQueryAllEqual() {
   auto sleep_time = std::to_string(static_cast<double>(kAvgTime) * 1e-6);
   return "SELECT SLEEP(" + sleep_time + ");";
 }
 
-std::string GetQueryBad(size_t i) {
+inline std::string GetQueryBad(size_t i) {
   double sleep_time = 0;
   sleep_time = (i % 2 == 0) ? kMinTime : kAvgTime + i / 2;
   return "SELECT SLEEP(" + std::to_string(sleep_time * 1e-6) + ");";
@@ -98,14 +98,19 @@ std::string GetQueryBad(size_t i) {
 
 void Replay(const std::string &server,
             std::vector<long> &query_latencies,
-            std::vector<long> &trx_latencies) {
+            std::string &&synthetic_type) {
   auto conn = std::move(::ConnectToDb(server));
   if (conn.get() == nullptr) {
     exit(EXIT_FAILURE);
   }
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
   for (size_t i = 0; i < kQueryCount; i++) {
-    auto query = GetQueryAllEqual(i);
+    std::string query;
+    if (synthetic_type == "EQUAL") {
+      query = GetQueryAllEqual();
+    } else if (synthetic_type == "BAD") {
+      query = GetQueryBad(i);
+    }
     std::cout << "\rReplay of " << i + 1 << "/" << kQueryCount << std::flush;
     std::this_thread::sleep_for(std::chrono::microseconds(kThinkTime));
     try {
@@ -160,17 +165,14 @@ EOF)";
 
 int main(int argc, char *argv[]) {
   if (argc != 4) {
-    std::cout << "Usage: " << argv[0] << " [server] [workload_trace] [latency_file]" << std::endl;
+    std::cout << "Usage: " << argv[0] << " [server] [synthetic_type] [latency_file]" << std::endl;
     exit(EXIT_FAILURE);
   }
   std::string server(argv[1]);
-  std::string workload_file(argv[2]);
   std::string latency_file(argv[3]);
-  std::vector<long> trx_latencies;
   std::vector<long> query_latencies;
   RestartServers();
-  Replay(server, query_latencies, trx_latencies);
-  ::DumpTrxLatencies(std::move(trx_latencies), latency_file);
+  Replay(server, query_latencies, std::string(argv[2]));
   ::DumpQueryLatencies(std::move(query_latencies), latency_file);
 
   return 0;

@@ -257,7 +257,7 @@ void DumpTrxLatencies(std::vector<long> &&latencies, const std::string &file) {
   std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " transactions" << std::endl;
 }
 
-void DumpQueryLatencies(std::vector<int> &&query_ids, std::vector<long> &&latencies, const std::string &file) {
+void DumpQueryLatencies(const std::vector<int> &query_ids, const std::vector<long> &latencies, const std::string &file) {
   std::ofstream latency_file("query_" + file);
   for (size_t i = 0; i < query_ids.size(); i++) {
     auto query_id = query_ids[i];
@@ -266,6 +266,26 @@ void DumpQueryLatencies(std::vector<int> &&query_ids, std::vector<long> &&latenc
   }
   latency_file.close();
   std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " queries" << std::endl;
+}
+
+void AnnotateQueryProcessLatencies(const std::vector<int> &query_ids, const std::string &filename) {
+  std::ifstream infile(filename);
+  if (infile.fail()) {
+    return;
+  }
+  long latency;
+  std::vector<long> query_process_latencies;
+  while (!infile.eof()) {
+    infile >> latency;
+    query_process_latencies.push_back(latency);
+  }
+  infile.close();
+  std::ofstream outfile(filename);
+  for (size_t i = 0; i < query_ids.size(); i++) {
+    auto query_id = query_ids[i];
+    auto latency = query_process_latencies[i];
+    outfile << query_id << ',' << latency << std::endl;
+  }
 }
 
 void RestartServers() {
@@ -305,7 +325,8 @@ int main(int argc, char *argv[]) {
     start = Replay(server, start, query_latencies, trx_latencies, skipped_queries, trace);
   }
   ::DumpTrxLatencies(std::move(trx_latencies), latency_file);
-  ::DumpQueryLatencies(std::move(query_ids), std::move(query_latencies), latency_file);
+  ::DumpQueryLatencies(query_ids, query_latencies, latency_file);
+  ::AnnotateQueryProcessLatencies(query_ids, "query_process");
 
   return 0;
 }

@@ -34,7 +34,7 @@ set(ROUTING_SOURCE_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/mysql_auth/mysql_common.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/mysql_auth/mysql_auth_client.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/mysql_auth/mysql_auth_server.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/speculator/fake_speculator.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/speculator/log_speculator.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/speculator/synthetic_speculator.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/protocol/classic_protocol.cc
   ${ROUTING_SOURCE_FILES_X_PROTOCOL}

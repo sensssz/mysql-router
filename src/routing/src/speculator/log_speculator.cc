@@ -1,4 +1,4 @@
-#include "fake_speculator.h"
+#include "log_speculator.h"
 #include "logger.h"
 
 #include <fstream>
@@ -11,7 +11,7 @@ static std::vector<std::string> fake_speculations{
   "SELECT `users`.* FROM `users`  WHERE `users`.`id` IN (9, 8, 6, 5, 4, 3, 2, 276, 274, 273, 272, 271, 265, 263, 262, 260, 255, 251, 247, 245)"
 };
 
-FakeSpeculator::FakeSpeculator(const std::string &filename) : start_(false), current_query_(0), dist_(1, 100) {
+LogSpeculator::LogSpeculator(const std::string &filename) : start_(false), current_query_(0), dist_(1, 100) {
   std::ifstream infile(filename);
   if (infile.fail()) {
     return;
@@ -27,13 +27,13 @@ FakeSpeculator::FakeSpeculator(const std::string &filename) : start_(false), cur
   }
 }
 
-void FakeSpeculator::CheckBegin(const std::string &query) {
+void LogSpeculator::CheckBegin(const std::string &query) {
   if (!start_ && query == "BEGIN") {
     start_ = true;
   }
 }
 
-std::vector<std::string> FakeSpeculator::Speculate(const std::string &query, int num_speculations) {
+std::vector<std::string> LogSpeculator::Speculate(const std::string &query, int num_speculations) {
   std::vector<std::string> speculations;
   // return std::move(speculations);
   if (!start_ || current_query_ == -1) {

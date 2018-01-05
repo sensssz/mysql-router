@@ -1,14 +1,14 @@
-#ifndef SPECULATOR_FAKE_SPECULATOR_H_
-#define SPECULATOR_FAKE_SPECULATOR_H_
+#ifndef SPECULATOR_LOG_SPECULATOR_H_
+#define SPECULATOR_LOG_SPECULATOR_H_
 
 #include "speculator.h"
 
 #include <random>
 #include <vector>
 
-class FakeSpeculator : public Speculator {
+class LogSpeculator : public Speculator {
 public:
-  FakeSpeculator(const std::string &filename);
+  LogSpeculator(const std::string &filename);
   virtual void CheckBegin(const std::string &query) override;
   virtual void SkipQuery() override {
     if (start_) {
@@ -36,4 +36,4 @@ private:
   int ExtractKeyValue(const std::string &query);
 };
 
-#endif // SPECULATOR_FAKE_SPECULATOR_H_
+#endif // SPECULATOR_LOG_SPECULATOR_H_

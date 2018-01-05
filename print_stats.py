@@ -26,7 +26,7 @@ def calc_stats(ori_latencies, sqp_latencies, query_count):
     ori_avg = np.mean(ori_query_latencies)
     sqp_avg = np.mean(sqp_query_latencies)
     speedup = ori_avg / sqp_avg
-    propotion = len(ori_query_latencies) * 100 / query_count
+    propotion = 100.0 * len(ori_query_latencies) / query_count
     print '%d, %f, %f, %f, %f' % (query_id, propotion, sqp_avg, ori_avg, speedup)
   ori_latency_avg = np.mean(ori_latencies_all)
   sqp_latency_avg = np.mean(sqp_latencies_all)

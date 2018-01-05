@@ -16,15 +16,22 @@ def load_latencies(filename):
   return latencies, query_count
 
 def calc_stats(ori_latencies, sqp_latencies, query_count):
+  ori_latencies_all = []
+  sqp_latencies_all = []
   for query_id in ori_latencies:
     ori_query_latencies = ori_latencies[query_id]
     sqp_query_latencies = sqp_latencies[query_id]
+    ori_latencies_all += ori_query_latencies
+    sqp_latencies_all += sqp_query_latencies
     ori_avg = np.mean(ori_query_latencies)
     sqp_avg = np.mean(sqp_query_latencies)
-    std_to_avg = np.std(ori_query_latencies) / ori_avg
     speedup = ori_avg / sqp_avg
     propotion = len(ori_query_latencies) * 100 / query_count
-    print '%d, %f, %f, %f, %f, %f' % (query_id, propotion, sqp_avg, ori_avg, std_to_avg, speedup)
+    print '%d, %f, %f, %f, %f' % (query_id, propotion, sqp_avg, ori_avg, speedup)
+  ori_latency_avg = np.mean(ori_latencies_all)
+  sqp_latency_avg = np.mean(sqp_latencies_all)
+  overall_speedup = ori_latency_avg / sqp_latency_avg
+  print 'Overall, 100, %f, %f, %f' % (ori_latency_avg, sqp_latency_avg, overall_speedup)
 
 def main(original_latency_file, sqp_latency_file):
   ori_latencies, query_count = load_latencies(original_latency_file)

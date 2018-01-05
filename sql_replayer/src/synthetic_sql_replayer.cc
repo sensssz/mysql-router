@@ -86,7 +86,7 @@ std::string NumberedQuery(size_t index, const std::string &query) {
 }
 
 std::string GetQueryAllEqual(size_t i) {
-  constexpr auto sleep_time = std::to_string(static_cast<double>(kAvgTime) * 1e-6);
+  auto sleep_time = std::to_string(static_cast<double>(kAvgTime) * 1e-6);
   return "SELECT SLEEP(" + sleep_time + ");";
 }
 

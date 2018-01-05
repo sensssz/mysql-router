@@ -35,7 +35,7 @@ long GetDuration(TimePoint &start) {
   return static_cast<long>(duration.count());
 }
 
-double Mean(std::vector<long> &latencies) {
+double Mean(const std::vector<long> &latencies) {
   double mean = 0;
   double i = 1;
   for (auto latency : latencies) {

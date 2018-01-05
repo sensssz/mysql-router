@@ -86,7 +86,7 @@ std::string NumberedQuery(size_t index, const std::string &query) {
 }
 
 std::string GetQueryAllEqual(size_t i) {
-  constexpr auto sleep_time = std::string(static_cast<double>(kAvgTime) * 1e-6);
+  constexpr auto sleep_time = std::to_string(static_cast<double>(kAvgTime) * 1e-6);
   return "SELECT SLEEP(" + sleep_time + ");";
 }
 
@@ -105,8 +105,8 @@ void Replay(const std::string &server,
   }
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
   for (size_t i = 0; i < kQueryCount; i++) {
-    auto &query = GetQueryAllEqual(i);
-    std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
+    auto query = GetQueryAllEqual(i);
+    std::cout << "\rReplay of " << i + 1 << "/" << kQueryCount << std::flush;
     std::this_thread::sleep_for(std::chrono::microseconds(kThinkTime));
     try {
       auto start = Now();
@@ -166,7 +166,6 @@ int main(int argc, char *argv[]) {
   std::string server(argv[1]);
   std::string workload_file(argv[2]);
   std::string latency_file(argv[3]);
-  size_t start = 0;
   std::vector<long> trx_latencies;
   std::vector<long> query_latencies;
   RestartServers();

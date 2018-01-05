@@ -108,6 +108,13 @@ void DumpWaits(std::vector<int> &indices, std::vector<long> &wait_times) {
   }
 }
 
+void DumpLatency(std::vector<long> &latencies, const std::string &latency_name) {
+  std::ofstream outfile(latency_name);
+  for (auto &latency : latencies) {
+    outfile << latency << std::endl;
+  }
+}
+
 bool IsQuery(uint8_t *buffer) {
   return buffer[kMySQLHeaderLen] == static_cast<uint8_t>(COM_QUERY);
 }
@@ -431,6 +438,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
     }
 
     if (::IsQuery(client_connection.Buffer())) {
+      auto query_process_start = Now();
       auto pair = ::ExtractQuery(client_connection.Buffer());
       int query_index = pair.first;
       if (query_index == 6399) {
@@ -477,7 +485,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         // the result has already been retrieved, then that server can be
         // reused to process the speculative query. Therefore, we first check
         // for prediction hit, and then check whether the result has arrived.
-        auto query_process_start = Now();
         if (has_begun) {
           think_time.push_back(GetDuration(prev_query, query_process_start));
           num_reads++;
@@ -589,6 +596,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   } // while (true)
 
   client_connection.Disconnect();
+  DumpLatency(query_process_time, "query_process");
 
   if (!handshake_done) {
     auto ip_array = in_addr_to_array(client_addr);

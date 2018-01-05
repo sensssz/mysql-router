@@ -1,5 +1,10 @@
 #include "server_group.h"
 
+#include <cstring>
+
+static const size_t kExitPacketSize = 5;
+static const uint8_t kExitPacket[] = {1, 0, 0, 0, 1};
+
 ServerGroup::ServerGroup(const std::vector<int> &server_fds) {
   for (auto fd : server_fds) {
     server_conns_.emplace_back(fd, routing::RdmaOperations::instance());
@@ -77,7 +82,7 @@ int ServerGroup::Write(uint8_t *buffer, size_t size) {
       has_outstanding_request_[i] = true;
     }
   }
-  if (error) {
+  if (error || IsExitPacket(buffer, size)) {
     return -1;
   } else {
     return static_cast<int>(size);
@@ -179,4 +184,11 @@ void ServerGroup::WaitForServer(size_t server_index) {
       return;
     }
   }
+}
+
+bool ServerGroup::IsExitPacket(uint8_t *buffer, size_t size) {
+  if (size != kExitPacketSize) {
+    return false;
+  }
+  return memcmp(buffer, kExitPacket, kExitPacketSize) == 0;
 }

@@ -26,6 +26,7 @@ public:
   void WaitForServer(size_t server_index);
   bool ForwardToAll(const std::string &query);
   int GetAvailableServer();
+  bool IsExitPacket(uint8_t *buffer, size_t size);
 
 private:
 

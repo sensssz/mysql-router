@@ -286,7 +286,7 @@ void AnnotateQueryProcessLatencies(const std::vector<int> &query_ids, const std:
     auto latency = query_process_latencies[i];
     outfile << query_id << ',' << latency << std::endl;
   }
-  std::cout << "Mean latency from " << filename << " is" << Mean(query_process_latencies) << "us" << std::endl;
+  std::cout << "Mean query process latency is" << Mean(query_process_latencies) << "us" << std::endl;
 }
 
 void RestartServers() {

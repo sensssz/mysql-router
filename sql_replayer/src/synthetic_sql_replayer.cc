@@ -24,10 +24,11 @@ using TimePoint = std::chrono::high_resolution_clock::time_point;
 namespace rjson = rapidjson;
 
 const int kNumIndexDigits = 10;
-const int kMinTime = 1001;
-const int kMaxTime = 1100;
-const int kAvgTime = 1050;
-const int kQueryCount = kMaxTime - kMinTime + 1;
+const int kMinTime = 1000;
+const int kMaxTime = 10000;
+const int kAvgTime = (kMinTime + kMaxTime) / 2;
+const int kQueryCount = 100;
+const int kStep = (kMaxTime - kMinTime) / kQueryCount;
 const int kThinkTime = 100;
 
 TimePoint Now() {
@@ -92,7 +93,7 @@ inline std::string GetQueryAllEqual() {
 
 inline std::string GetQueryBad(size_t i) {
   double sleep_time = 0;
-  sleep_time = (i % 2 == 0) ? kMinTime : kAvgTime + i / 2;
+  sleep_time = (i % 2 == 0) ? kMinTime : kAvgTime + i / 2 * kStep;
   return "SELECT SLEEP(" + std::to_string(sleep_time * 1e-6) + ");";
 }
 

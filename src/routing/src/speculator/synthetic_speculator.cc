@@ -2,11 +2,11 @@
 
 #include <fstream>
 
-const int kMinTime = 1001;
-const int kMaxTime = 1100;
-const int kAvgTime = 1050;
-const int kQueryCount = kMaxTime - kMinTime + 1;
-const int kThinkTime = 100;
+const int kMinTime = 1000;
+const int kMaxTime = 10000;
+const int kAvgTime = (kMinTime + kMaxTime) / 2;
+const int kQueryCount = 100;
+const int kStep = (kMaxTime - kMinTime) / kQueryCount;
 
 static std::string GetQueryAllEqual() {
   auto sleep_time = std::to_string(static_cast<double>(kAvgTime) * 1e-6);
@@ -15,7 +15,7 @@ static std::string GetQueryAllEqual() {
 
 static std::string GetQueryBad(int i) {
   double sleep_time = 0;
-  sleep_time = (i % 2 == 0) ? kMinTime : kAvgTime + i / 2;
+  sleep_time = (i % 2 == 0) ? kMinTime : kAvgTime + i / 2 * kStep;
   return "SELECT SLEEP(" + std::to_string(sleep_time * 1e-6) + ");";
 }
 

@@ -46,6 +46,7 @@ def main(original_latency_file, sqp_latency_file):
   '''
   ori_latencies, query_count = load_latencies(original_latency_file)
   sqp_latencies, query_count = load_latencies(sqp_latency_file)
+  print 'Stat, Query Type, Proportion (%), Original (us), SQP (us), Speedup of Speculation (x)'
   calc_stats(ori_latencies, sqp_latencies, query_count, 'Average', np.mean)
   calc_stats(ori_latencies, sqp_latencies, query_count, 'Median', np.median)
   calc_stats(ori_latencies, sqp_latencies, query_count,

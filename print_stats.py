@@ -33,13 +33,13 @@ def calc_stats(ori_latencies, sqp_latencies, query_count, aggregate_name, aggreg
     sqp_stat = aggregator(sqp_query_latencies)
     speedup = ori_stat / sqp_stat
     propotion = 100.0 * len(ori_query_latencies) / query_count
-    print '%s, %d, %f, %f, %f, %f\n' % (aggregate_name, query_id, propotion,
+    print '%s, %d, %f, %f, %f, %f' % (aggregate_name, query_id, propotion,
                                         sqp_stat, ori_stat, speedup)
   ori_latency_stat = aggregator(ori_latencies_all)
   sqp_latency_stat = aggregator(sqp_latencies_all)
   overall_speedup = ori_latency_stat / sqp_latency_stat
-  print '%s, Overall, 100, %f, %f, %f\n\n' % (aggregate_name, ori_latency_stat,
-                                              sqp_latency_stat, overall_speedup)
+  print '%s, Overall, 100, %f, %f, %f\n' % (aggregate_name, ori_latency_stat,
+                                            sqp_latency_stat, overall_speedup)
 
 def main(original_latency_file, sqp_latency_file):
   ''' Main function

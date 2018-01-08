@@ -296,8 +296,8 @@ void DumpQueryLatencies(const std::vector<int> &query_ids, const std::vector<lon
 void AnnotateQueryProcessLatencies(const std::vector<int> &query_ids, const std::string &filename, const std::string &postfix) {
   const std::string &command = "scp client:" + filename + " " + filename + "_" + postfix;
   system(command.c_str());
-  filename += "_" + postfix;
-  std::ifstream infile(filename);
+  auto local_filename = filename + "_" + postfix;
+  std::ifstream infile(local_filename);
   if (infile.fail()) {
     return;
   }
@@ -308,7 +308,7 @@ void AnnotateQueryProcessLatencies(const std::vector<int> &query_ids, const std:
     query_process_latencies.push_back(latency);
   }
   infile.close();
-  std::ofstream outfile(filename);
+  std::ofstream outfile(local_filename);
   for (size_t i = 0; i < query_ids.size(); i++) {
     auto query_id = query_ids[i];
     auto latency = query_process_latencies[i];
@@ -356,7 +356,7 @@ int main(int argc, char *argv[]) {
   }
   ::DumpTrxLatencies(std::move(trx_latencies), postfix);
   ::DumpQueryLatencies(query_ids, query_latencies, postfix);
-  ::AnnotateQueryProcessLatencies(query_ids, "query_process");
+  ::AnnotateQueryProcessLatencies(query_ids, "query_process", postfix);
 
   return 0;
 }

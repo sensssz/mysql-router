@@ -51,9 +51,9 @@ def main(original_latency_file, sqp_latency_file):
   calc_stats(ori_latencies, sqp_latencies, query_count, 'Average', 'average.csv', np.mean)
   calc_stats(ori_latencies, sqp_latencies, query_count, 'Median', 'median.csv', np.median)
   calc_stats(ori_latencies, sqp_latencies, query_count,
-             '95th Percentile', '95perctl', lambda x: np.percentile(x, 95))
+             '95th Percentile', '95perctl.csv', lambda x: np.percentile(x, 95))
   calc_stats(ori_latencies, sqp_latencies, query_count,
-             '99th Percentile', '99perctl', lambda x: np.percentile(x, 99))
+             '99th Percentile', '99perctl.csv', lambda x: np.percentile(x, 99))
 
 if __name__ == '__main__':
   if len(sys.argv) != 3:

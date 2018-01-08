@@ -428,22 +428,19 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       break;
     }
 
-    if (num_reads > 0 && num_reads % 100 == 0) {
-      std::cerr << "Reads\t\tMisses\t\tinstants\t\tWaits" << std::endl;
-      std::cerr << num_reads << "\t\t" << num_misses << "\t\t" << num_instants << "\t\t" << num_waits << std::endl;
-      std::cerr << "Think\t\tQuery Process\t\tHit\t\tMiss\t\tSpeculation\t\tQuery Wait\t\tWait Think\t\tNetwork Latency" << std::endl;
-      std::cerr << Mean(think_time) << "\t\t" << Mean(query_process_time) << "\t\t" << Mean(hit_time) << "\t\t" << Mean(miss_time) << "\t\t" << Mean(speculation_time) << "\t\t" << Mean(query_wait_time) << "\t\t" << Mean(wait_think_time) << "\t\t" << Mean(network_latency) << std::endl;
-      std::cerr << think_time.size() << "\t\t" << query_process_time.size() << "\t\t" << hit_time.size() << "\t\t" << miss_time.size() << "\t\t" << speculation_time.size() << "\t\t" << query_wait_time.size() << "\t\t" << wait_think_time.size() << "\t\t" << network_latency.size() << std::endl;
-      std::cerr << std::endl;
-    }
+    // if (num_reads > 0 && num_reads % 100 == 0) {
+    //   std::cerr << "Reads\t\tMisses\t\tinstants\t\tWaits" << std::endl;
+    //   std::cerr << num_reads << "\t\t" << num_misses << "\t\t" << num_instants << "\t\t" << num_waits << std::endl;
+    //   std::cerr << "Think\t\tQuery Process\t\tHit\t\tMiss\t\tSpeculation\t\tQuery Wait\t\tWait Think\t\tNetwork Latency" << std::endl;
+    //   std::cerr << Mean(think_time) << "\t\t" << Mean(query_process_time) << "\t\t" << Mean(hit_time) << "\t\t" << Mean(miss_time) << "\t\t" << Mean(speculation_time) << "\t\t" << Mean(query_wait_time) << "\t\t" << Mean(wait_think_time) << "\t\t" << Mean(network_latency) << std::endl;
+    //   std::cerr << think_time.size() << "\t\t" << query_process_time.size() << "\t\t" << hit_time.size() << "\t\t" << miss_time.size() << "\t\t" << speculation_time.size() << "\t\t" << query_wait_time.size() << "\t\t" << wait_think_time.size() << "\t\t" << network_latency.size() << std::endl;
+    //   std::cerr << std::endl;
+    // }
 
     if (::IsQuery(client_connection.Buffer())) {
       auto query_process_start = Now();
       auto pair = ::ExtractQuery(client_connection.Buffer());
       int query_index = pair.first;
-      if (query_index == 6399) {
-        DumpWaits(wait_queries, query_wait_time);
-      }
       std::string query = pair.second;
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);
@@ -596,6 +593,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   } // while (true)
 
   client_connection.Disconnect();
+  DumpWaits(wait_queries, query_wait_time);
   DumpLatency(query_process_time, "query_process");
 
   if (!handshake_done) {

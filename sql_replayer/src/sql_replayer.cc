@@ -112,6 +112,23 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(
   return std::move(res);
 }
 
+std::set<size_t> LoadWaitQueries(const std::string &filename) {
+  std::set<size_t> wait_queries;
+  std::ifstream infile(filename);
+  if (infile.fail()) {
+    std::cerr << "Wait query file not found" << std::endl;
+    return std::move(wait_queries);
+  }
+  size_t query_index;
+  std::cout << "Loading wait queries" << std::endl;
+  while (!infile.eof()) {
+    infile >> query_index;
+    wait_queries.insert(query_index);
+  }
+
+  return std::move(wait_queries);
+}
+
 std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
   auto driver = sql::mysql::get_mysql_driver_instance();
   std::string url = server + ":4243";
@@ -178,6 +195,7 @@ void WarmUp(sql::Connection *conn,
 
 size_t Replay(const std::string &server,
               size_t start,
+              std::set<size_t> wait_queries,
               std::vector<long> &query_latencies,
               std::vector<long> &trx_latencies,
               std::set<size_t> &skipped_queries,
@@ -186,7 +204,7 @@ size_t Replay(const std::string &server,
   if (conn.get() == nullptr) {
     exit(EXIT_FAILURE);
   }
-  WarmUp(conn.get(), trace);
+  // WarmUp(conn.get(), trace);
   start = Rewind(start, trace);
   auto total = trace.size();
   TimePoint trx_start;
@@ -197,6 +215,13 @@ size_t Replay(const std::string &server,
     std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
     if (query.first != "BEGIN" && query.second > 0) {
       std::this_thread::sleep_for(std::chrono::microseconds(query.second));
+      /*
+      if (wait_queries.find(i) != wait_queries.end()) {
+        std::this_thread::sleep_for(std::chrono::microseconds(8000000));
+      } else {
+        std::this_thread::sleep_for(std::chrono::microseconds(query.second));
+      }
+      */
     }
     if (skipped_queries.find(i) != skipped_queries.end()) {
       continue;
@@ -248,8 +273,8 @@ size_t Replay(const std::string &server,
 
 }
 
-void DumpTrxLatencies(std::vector<long> &&latencies, const std::string &file) {
-  std::ofstream latency_file("trx_" + file);
+void DumpTrxLatencies(std::vector<long> &&latencies, const std::string &postfix) {
+  std::ofstream latency_file("trx_latencies_" + postfix);
   for (auto latency : latencies) {
     latency_file << latency << std::endl;
   }
@@ -257,8 +282,8 @@ void DumpTrxLatencies(std::vector<long> &&latencies, const std::string &file) {
   std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " transactions" << std::endl;
 }
 
-void DumpQueryLatencies(const std::vector<int> &query_ids, const std::vector<long> &latencies, const std::string &file) {
-  std::ofstream latency_file("query_" + file);
+void DumpQueryLatencies(const std::vector<int> &query_ids, const std::vector<long> &latencies, const std::string &postfix) {
+  std::ofstream latency_file("query_latencies_" + postfix);
   for (size_t i = 0; i < query_ids.size(); i++) {
     auto query_id = query_ids[i];
     auto latency = latencies[i];
@@ -268,7 +293,10 @@ void DumpQueryLatencies(const std::vector<int> &query_ids, const std::vector<lon
   std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " queries" << std::endl;
 }
 
-void AnnotateQueryProcessLatencies(const std::vector<int> &query_ids, const std::string &filename) {
+void AnnotateQueryProcessLatencies(const std::vector<int> &query_ids, const std::string &filename, const std::string &postfix) {
+  const std::string &command = "scp client:" + filename + " " + filename + "_" + postfix;
+  system(command.c_str());
+  filename += "_" + postfix;
   std::ifstream infile(filename);
   if (infile.fail()) {
     return;
@@ -290,7 +318,7 @@ void AnnotateQueryProcessLatencies(const std::vector<int> &query_ids, const std:
 }
 
 void RestartServers() {
-  system("/users/POTaDOS/SQP/.local/bin/mrstart");
+  system("ssh client /users/POTaDOS/SQP/.local/bin/mrstart");
   for (auto i = 1; i <= 2; i++) {
     auto command = "ssh server" + std::to_string(i) + R"( /bin/bash <<EOF
       source .bashrc;
@@ -309,24 +337,25 @@ EOF)";
 
 int main(int argc, char *argv[]) {
   if (argc != 4) {
-    std::cout << "Usage: " << argv[0] << " [server] [workload_trace] [latency_file]" << std::endl;
+    std::cout << "Usage: " << argv[0] << " [server] [workload_trace] [postfix]" << std::endl;
     exit(EXIT_FAILURE);
   }
   std::string server(argv[1]);
   std::string workload_file(argv[2]);
-  std::string latency_file(argv[3]);
+  std::string postfix(argv[3]);
   std::vector<int> query_ids;
   auto trace = ::LoadWorkloadTrace(workload_file, query_ids);
   size_t start = 0;
   std::vector<long> trx_latencies;
   std::vector<long> query_latencies;
   std::set<size_t> skipped_queries;
+  std::set<size_t> wait_queries = LoadWaitQueries("wait_queries");
   while(start != trace.size()) {
     RestartServers();
-    start = Replay(server, start, query_latencies, trx_latencies, skipped_queries, trace);
+    start = Replay(server, start, wait_queries, query_latencies, trx_latencies, skipped_queries, trace);
   }
-  ::DumpTrxLatencies(std::move(trx_latencies), latency_file);
-  ::DumpQueryLatencies(query_ids, query_latencies, latency_file);
+  ::DumpTrxLatencies(std::move(trx_latencies), postfix);
+  ::DumpQueryLatencies(query_ids, query_latencies, postfix);
   ::AnnotateQueryProcessLatencies(query_ids, "query_process");
 
   return 0;

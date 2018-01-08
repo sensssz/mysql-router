@@ -29,7 +29,7 @@
 #include "mysqlrouter/utils.h"
 #include "plugin_config.h"
 #include "protocol/protocol.h"
-#include "speculator/fake_speculator.h"
+#include "speculator/log_speculator.h"
 
 #include <algorithm>
 #include <array>
@@ -310,7 +310,7 @@ MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
       bind_named_socket_(named_socket),
       service_tcp_(0),
       service_named_socket_(0),
-      speculator_(new FakeSpeculator("/users/POTaDOS/SQP/lobsters.sql")),
+      speculator_(new LogSpeculator("/users/POTaDOS/SQP/lobsters.sql")),
       stopping_(false),
       info_active_routes_(0),
       info_handled_routes_(0),

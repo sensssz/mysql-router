@@ -356,7 +356,7 @@ void DumpQueryProcessLatencies(const std::vector<std::pair<int, long>> &query_pr
 } // namespace
 
 int main(int argc, char *argv[]) {
-  if (argc != 4) {
+  if (argc != 5) {
     std::cout << "Usage: " << argv[0] << " [server] [num_clients] [workload_trace] [postfix]" << std::endl;
     exit(EXIT_FAILURE);
   }

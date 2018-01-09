@@ -441,6 +441,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       std::string query = pair.second;
       if (ID == -1 && query.find("ID=") == 0) {
         ID = ::ExtractID(query);
+        continue;
       }
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);

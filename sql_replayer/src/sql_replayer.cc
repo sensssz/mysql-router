@@ -208,8 +208,8 @@ void Replay(int ID, const std::string &server,
   auto total = trace.size();
   TimePoint trx_start;
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
-  stmt->execute("set autocommit=0");
   stmt->execute("ID=" + std::to_string(ID));
+  stmt->execute("set autocommit=0");
   for (size_t i = 0; i < total; i++) {
     auto &query = trace[i];
     std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
@@ -309,7 +309,6 @@ void ClientThread(int ID, const std::string &server,
                   const std::vector<int> &query_ids,
                   const std::set<size_t> &wait_queries,
                   const std::vector<std::pair<std::string, long>> &trace) {
-  size_t start = 0;
   std::vector<long> local_trx_latencies;
   std::vector<long> local_query_latencies;
   ::Replay(ID, server, wait_queries, local_query_latencies, local_trx_latencies, trace);
@@ -375,6 +374,7 @@ int main(int argc, char *argv[]) {
   std::mutex mutex;
   for (int i = 0; i < num_clients; i++) {
     std::thread client([&, i]() {
+      std::cout << "Spawning client " << i << std::endl;
       ::ClientThread(i, server, mutex, trx_latencies,
                      query_latencies, query_process_latencies,
                      query_ids, wait_queries, trace);

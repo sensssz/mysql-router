@@ -301,16 +301,27 @@ int RdmaOperations::get_mysql_socket(TCPAddress addr, int connect_timeout, bool 
   if (!s.ok()) {
     return -1;
   }
-  int fd = ++current_fd_;
-  rdma_fds_[fd] = client;
+  int fd = -1;
+  {
+    std::unique_lock<std::shared_mutex> l(mutex_);
+    fd = ++current_fd_;
+    rdma_fds_[fd] = client;
+  }
   return fd;
 }
 
 ssize_t RdmaOperations::write(int fd, void *buffer, size_t nbyte) {
 #ifndef _WIN32
-  auto iter = rdma_fds_.find(fd);
-  if (iter != rdma_fds_.end()) {
-    return iter->second->SendToServer(buffer, nbyte);
+  RdmaClient *client = nullptr;
+  {
+    std::shared_lock<std::shared_mutex> l(mutex_);
+    auto iter = rdma_fds_.find(fd);
+    if (iter != rdma_fds_.end()) {
+      return client = iter->second;
+    }
+  }
+  if (client != nullptr) {
+    return client->SendToServer(buffer, nbyte);
   } else {
     return -1;
   }
@@ -322,9 +333,16 @@ ssize_t RdmaOperations::write(int fd, void *buffer, size_t nbyte) {
 
 ssize_t RdmaOperations::read(int fd, void *buffer, size_t nbyte) {
 #ifndef _WIN32
-  auto iter = rdma_fds_.find(fd);
-  if (iter != rdma_fds_.end()) {
-    return iter->second->Read(buffer, nbyte);
+  RdmaClient *client = nullptr;
+  {
+    std::shared_lock<std::shared_mutex> l(mutex_);
+    auto iter = rdma_fds_.find(fd);
+    if (iter != rdma_fds_.end()) {
+      return client = iter->second;
+    }
+  }
+  if (client != nullptr) {
+    return client->Read(buffer, nbyte);
   } else {
     return -1;
   }
@@ -335,25 +353,40 @@ ssize_t RdmaOperations::read(int fd, void *buffer, size_t nbyte) {
 }
 
 bool RdmaOperations::has_error(int fd) {
-  auto iter = rdma_fds_.find(fd);
-  if (iter != rdma_fds_.end()) {
-    return iter->second->HasError();
+  RdmaClient *client = nullptr;
+  {
+    std::shared_lock<std::shared_mutex> l(mutex_);
+    auto iter = rdma_fds_.find(fd);
+    if (iter != rdma_fds_.end()) {
+      return client = iter->second;
+    }
+  }
+  if (client != nullptr) {
+    return client->HasError();
   } else {
-    return false;
+    return -1;
   }
 }
 
 bool RdmaOperations::has_data(int fd) {
-  auto iter = rdma_fds_.find(fd);
-  if (iter != rdma_fds_.end()) {
-    return iter->second->HasData();
+  RdmaClient *client = nullptr;
+  {
+    std::shared_lock<std::shared_mutex> l(mutex_);
+    auto iter = rdma_fds_.find(fd);
+    if (iter != rdma_fds_.end()) {
+      return client = iter->second;
+    }
+  }
+  if (client != nullptr) {
+    return client->HasData();
   } else {
-    return false;
+    return -1;
   }
 }
 
 void RdmaOperations::close(int fd) {
 #ifndef _WIN32
+  std::unique_lock<std::shared_mutex> l(mutex_);
   auto iter = rdma_fds_.find(fd);
   if (iter != rdma_fds_.end()) {
     iter->second->Disconnect();
@@ -367,6 +400,7 @@ void RdmaOperations::close(int fd) {
 
 void RdmaOperations::shutdown(int fd) {
 #ifndef _WIN32
+  std::unique_lock<std::shared_mutex> l(mutex_);
   auto iter = rdma_fds_.find(fd);
   if (iter != rdma_fds_.end()) {
     iter->second->Disconnect();

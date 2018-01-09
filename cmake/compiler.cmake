@@ -15,16 +15,16 @@
 
 include(CheckCXXCompilerFlag)
 
-# Check for C++11 support
+# Check for C++17 support
 function(CHECK_CXX11)
-  check_cxx_compiler_flag("-std=c++11" support_11)
+  check_cxx_compiler_flag("-std=c++17" support_17)
 
-  if(support_11)
-    set(CXX11_FLAG "-std=c++11" PARENT_SCOPE)
+  if(support_17)
+    set(CXX17_FLAG "-std=c++17" PARENT_SCOPE)
   else()
-    message(FATAL_ERROR "Compiler ${CMAKE_CXX_COMPILER} does not support C++11 standard")
+    message(FATAL_ERROR "Compiler ${CMAKE_CXX_COMPILER} does not support C++17 standard")
   endif()
-  set(CMAKE_CXX_FLAGS ${CXX11_FLAG} PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS ${CXX17_FLAG} PARENT_SCOPE)
 endfunction()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -43,4 +43,3 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 else()
   message(FATAL_ERROR "Compiler ${CMAKE_CXX_COMPILER} is not supported")
 endif()
-

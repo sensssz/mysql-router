@@ -91,6 +91,8 @@ const char *kDefaultReplicaSetName = "default";
 const int kAcceptorStopPollInterval_ms = 1000;
 const int kNumIndexDigits = 10;
 
+uint8_t kOkPacket[] = {7, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0};
+
 double Mean(std::vector<long> &latencies) {
   double mean = 0;
   double i = 1;
@@ -441,6 +443,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       std::string query = pair.second;
       if (ID == -1 && query.find("ID=") == 0) {
         ID = ::ExtractID(query);
+        client_connection.Send(kOkPacket, sizeof(kOkPacket));
         continue;
       }
       speculator_->CheckBegin(query);

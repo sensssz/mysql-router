@@ -23,6 +23,7 @@
 #include "mysqlrouter/plugin_config.h"
 
 #include <map>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -233,6 +234,7 @@ class RdmaOperations : public SocketOperationsBase {
   RdmaOperations operator=(const RdmaOperations&) = delete;
   RdmaOperations() : current_fd_(0) {}
 
+  std::shared_mutex mutex_;
   int current_fd_;
   std::unordered_map<int, RdmaClient*> rdma_fds_;
 };

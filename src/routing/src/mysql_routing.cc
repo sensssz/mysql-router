@@ -134,7 +134,7 @@ std::pair<int, std::string> ExtractQuery(uint8_t *buffer) {
 
 int ExtractID(const std::string &query) {
   // ID=[id] (no square bracket)
-  return atoi(query.c_str + 2);
+  return atoi(query.c_str() + 2);
 }
 
 std::string ToLower(const std::string &query) {

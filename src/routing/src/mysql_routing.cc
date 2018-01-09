@@ -132,6 +132,11 @@ std::pair<int, std::string> ExtractQuery(uint8_t *buffer) {
   return std::make_pair(query_index, std::string(query, query_size));
 }
 
+int ExtractID(const std::string &query) {
+  // ID=[id] (no square bracket)
+  return atoi(query.c_str + 2);
+}
+
 std::string ToLower(const std::string &query) {
   std::string lower = query;
   std::transform(lower.begin(), lower.end(), lower.begin(), tolower);
@@ -345,6 +350,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   bool handshake_done = false;
   Connection client_connection(client, routing::SocketOperations::instance());
   std::unordered_map<std::string, int> prefetches;
+  int ID = -1;
   bool has_begun = false;
   size_t num_reads = 0;
   size_t num_misses = 0;
@@ -428,20 +434,14 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       break;
     }
 
-    // if (num_reads > 0 && num_reads % 100 == 0) {
-    //   std::cerr << "Reads\t\tMisses\t\tinstants\t\tWaits" << std::endl;
-    //   std::cerr << num_reads << "\t\t" << num_misses << "\t\t" << num_instants << "\t\t" << num_waits << std::endl;
-    //   std::cerr << "Think\t\tQuery Process\t\tHit\t\tMiss\t\tSpeculation\t\tQuery Wait\t\tWait Think\t\tNetwork Latency" << std::endl;
-    //   std::cerr << Mean(think_time) << "\t\t" << Mean(query_process_time) << "\t\t" << Mean(hit_time) << "\t\t" << Mean(miss_time) << "\t\t" << Mean(speculation_time) << "\t\t" << Mean(query_wait_time) << "\t\t" << Mean(wait_think_time) << "\t\t" << Mean(network_latency) << std::endl;
-    //   std::cerr << think_time.size() << "\t\t" << query_process_time.size() << "\t\t" << hit_time.size() << "\t\t" << miss_time.size() << "\t\t" << speculation_time.size() << "\t\t" << query_wait_time.size() << "\t\t" << wait_think_time.size() << "\t\t" << network_latency.size() << std::endl;
-    //   std::cerr << std::endl;
-    // }
-
     if (::IsQuery(client_connection.Buffer())) {
       auto query_process_start = Now();
       auto pair = ::ExtractQuery(client_connection.Buffer());
       int query_index = pair.first;
       std::string query = pair.second;
+      if (ID == -1 && query.find("ID=") == 0) {
+        ID = ::ExtractID(query);
+      }
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);
       has_begun = has_begun || query == "BEGIN";
@@ -594,7 +594,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
   client_connection.Disconnect();
   DumpWaits(wait_queries, query_wait_time);
-  DumpLatency(query_process_time, "query_process");
+  DumpLatency(query_process_time, "query_process" + std::to_string(ID));
 
   if (!handshake_done) {
     auto ip_array = in_addr_to_array(client_addr);

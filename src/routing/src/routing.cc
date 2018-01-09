@@ -317,7 +317,7 @@ ssize_t RdmaOperations::write(int fd, void *buffer, size_t nbyte) {
     std::shared_lock<std::shared_mutex> l(mutex_);
     auto iter = rdma_fds_.find(fd);
     if (iter != rdma_fds_.end()) {
-      return client = iter->second;
+      client = iter->second;
     }
   }
   if (client != nullptr) {
@@ -338,7 +338,7 @@ ssize_t RdmaOperations::read(int fd, void *buffer, size_t nbyte) {
     std::shared_lock<std::shared_mutex> l(mutex_);
     auto iter = rdma_fds_.find(fd);
     if (iter != rdma_fds_.end()) {
-      return client = iter->second;
+      client = iter->second;
     }
   }
   if (client != nullptr) {
@@ -358,7 +358,7 @@ bool RdmaOperations::has_error(int fd) {
     std::shared_lock<std::shared_mutex> l(mutex_);
     auto iter = rdma_fds_.find(fd);
     if (iter != rdma_fds_.end()) {
-      return client = iter->second;
+      client = iter->second;
     }
   }
   if (client != nullptr) {
@@ -374,7 +374,7 @@ bool RdmaOperations::has_data(int fd) {
     std::shared_lock<std::shared_mutex> l(mutex_);
     auto iter = rdma_fds_.find(fd);
     if (iter != rdma_fds_.end()) {
-      return client = iter->second;
+      client = iter->second;
     }
   }
   if (client != nullptr) {

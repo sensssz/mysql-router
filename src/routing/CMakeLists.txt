@@ -77,6 +77,7 @@ if(CXX_HAVE_DEPRECATED_DECLARATIONS)
   add_compile_flags(${CMAKE_CURRENT_SOURCE_DIR}/src/protocol/x_protocol.cc
     COMPILE_FLAGS "-Wno-deprecated-declarations")
 endif()
+add_compile_options(-std=c++17)
 
 find_package(rdma REQUIRED)
 find_package(OpenSSL REQUIRED)

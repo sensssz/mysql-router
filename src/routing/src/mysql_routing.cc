@@ -91,7 +91,7 @@ const char *kDefaultReplicaSetName = "default";
 const int kAcceptorStopPollInterval_ms = 1000;
 const int kNumIndexDigits = 10;
 
-uint8_t kOkPacket[] = {7, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0};
+uint8_t kOkPacket[] = {7, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0};
 
 double Mean(std::vector<long> &latencies) {
   double mean = 0;

@@ -132,7 +132,7 @@ std::set<size_t> LoadWaitQueries(const std::string &filename) {
   return std::move(wait_queries);
 }
 
-std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
+std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server, const std::string &database) {
   auto driver = sql::mysql::get_mysql_driver_instance();
   std::string url = server + ":4243";
   std::cout << "Connecting to database..." << std::endl;
@@ -147,7 +147,7 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
         conn = nullptr;
       } else {
         std::cout << "Connection established" << std::endl;
-        conn->setSchema("lobsters");
+        conn->setSchema(database);
         conn->setAutoCommit(false);
       }
     } catch (sql::SQLException &e) {
@@ -197,11 +197,12 @@ void WarmUp(sql::Connection *conn,
 }
 
 void Replay(int ID, const std::string &server,
+            const std::string &database,
             std::set<size_t> wait_queries,
             std::vector<long> &query_latencies,
             std::vector<long> &trx_latencies,
             const std::vector<std::pair<std::string, long>> &trace) {
-  auto conn = std::move(::ConnectToDb(server));
+  auto conn = std::move(::ConnectToDb(server, database));
   if (conn.get() == nullptr) {
     exit(EXIT_FAILURE);
   }
@@ -302,6 +303,7 @@ std::vector<std::pair<int, long>> GetQueryProcessLatencies(const std::vector<int
 }
 
 void ClientThread(int ID, const std::string &server,
+                  const std::string &database,
                   std::mutex &mutex,
                   std::vector<long> &trx_latencies,
                   std::vector<long> &query_latencies,
@@ -311,7 +313,7 @@ void ClientThread(int ID, const std::string &server,
                   const std::vector<std::pair<std::string, long>> &trace) {
   std::vector<long> local_trx_latencies;
   std::vector<long> local_query_latencies;
-  ::Replay(ID, server, wait_queries, local_query_latencies, local_trx_latencies, trace);
+  ::Replay(ID, server, database, wait_queries, local_query_latencies, local_trx_latencies, trace);
   auto local_query_process_latencies = ::GetQueryProcessLatencies(query_ids, "query_process", ID);
   {
     std::unique_lock<std::mutex> l(mutex);
@@ -355,14 +357,15 @@ void DumpQueryProcessLatencies(const std::vector<std::pair<int, long>> &query_pr
 } // namespace
 
 int main(int argc, char *argv[]) {
-  if (argc != 5) {
-    std::cout << "Usage: " << argv[0] << " [server] [num_clients] [workload_trace] [postfix]" << std::endl;
+  if (argc != 6) {
+    std::cout << "Usage: " << argv[0] << " [server] [database] [num_clients] [workload_trace] [postfix]" << std::endl;
     exit(EXIT_FAILURE);
   }
   std::string server(argv[1]);
-  int num_clients = atoi(argv[2]);
-  std::string workload_file(argv[3]);
-  std::string postfix(argv[4]);
+  std::string database(argv[2]);
+  int num_clients = atoi(argv[3]);
+  std::string workload_file(argv[4]);
+  std::string postfix(argv[5]);
   std::vector<int> query_ids;
   auto trace = ::LoadWorkloadTrace(workload_file, query_ids);
   std::set<size_t> wait_queries = LoadWaitQueries("wait_queries");
@@ -375,7 +378,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < num_clients; i++) {
     std::thread client([&, i]() {
       std::cout << "Spawning client " << i << std::endl;
-      ::ClientThread(i, server, mutex, trx_latencies,
+      ::ClientThread(i, server, database, mutex, trx_latencies,
                      query_latencies, query_process_latencies,
                      query_ids, wait_queries, trace);
     });

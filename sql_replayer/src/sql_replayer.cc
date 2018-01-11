@@ -11,12 +11,15 @@
 #include <chrono>
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <utility>
 #include <vector>
+
+#include <cstdio>
 
 namespace {
 
@@ -129,7 +132,7 @@ std::set<size_t> LoadWaitQueries(const std::string &filename) {
   return std::move(wait_queries);
 }
 
-std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
+std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server, const std::string &database) {
   auto driver = sql::mysql::get_mysql_driver_instance();
   std::string url = server + ":4243";
   std::cout << "Connecting to database..." << std::endl;
@@ -144,7 +147,7 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server) {
         conn = nullptr;
       } else {
         std::cout << "Connection established" << std::endl;
-        conn->setSchema("lobsters");
+        conn->setSchema(database);
         conn->setAutoCommit(false);
       }
     } catch (sql::SQLException &e) {
@@ -193,24 +196,22 @@ void WarmUp(sql::Connection *conn,
   std::cout << std::endl << "Warm up complets" << std::endl;
 }
 
-size_t Replay(const std::string &server,
-              size_t start,
-              std::set<size_t> wait_queries,
-              std::vector<long> &query_latencies,
-              std::vector<long> &trx_latencies,
-              std::set<size_t> &skipped_queries,
-              const std::vector<std::pair<std::string, long>> &trace) {
-  auto conn = std::move(::ConnectToDb(server));
+void Replay(int ID, const std::string &server,
+            const std::string &database,
+            std::set<size_t> wait_queries,
+            std::vector<long> &query_latencies,
+            std::vector<long> &trx_latencies,
+            const std::vector<std::pair<std::string, long>> &trace) {
+  auto conn = std::move(::ConnectToDb(server, database));
   if (conn.get() == nullptr) {
     exit(EXIT_FAILURE);
   }
-  // WarmUp(conn.get(), trace);
-  start = Rewind(start, trace);
   auto total = trace.size();
   TimePoint trx_start;
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
+  stmt->execute("ID=" + std::to_string(ID));
   stmt->execute("set autocommit=0");
-  for (size_t i = start; i < total; i++) {
+  for (size_t i = 0; i < total; i++) {
     auto &query = trace[i];
     std::cout << "\rReplay of " << i + 1 << "/" << total << std::flush;
     if (query.first != "BEGIN" && query.second > 0) {
@@ -222,9 +223,6 @@ size_t Replay(const std::string &server,
         std::this_thread::sleep_for(std::chrono::microseconds(query.second));
       }
       */
-    }
-    if (skipped_queries.find(i) != skipped_queries.end()) {
-      continue;
     }
     if (query.first == "COMMIT") {
       conn->commit();
@@ -249,11 +247,10 @@ size_t Replay(const std::string &server,
         std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
         // Reconnect when lost connection
         if (e.getErrorCode() == 2006 || e.getErrorCode() == 2013 || e.getErrorCode() == 2014 || e.getErrorCode() == 1046) {
-          return i;
+          break;
         }
         else if (e.getErrorCode() == 1064) {
-          skipped_queries.insert(i);
-          return i;
+          break;
         }
         // Rewind when transaction times out
         else if (e.getErrorCode() == 1205) {
@@ -263,17 +260,72 @@ size_t Replay(const std::string &server,
         else if (e.getErrorCode() != 1062 &&
                  e.getErrorCode() != 1065 &&
                  e.getErrorCode() != 2014) {
-          return total;
+          break;
         }
       }
     }
   }
   std::cout << "\nReplay finished." << std::endl;
-  return total;
-
 }
 
-void DumpTrxLatencies(std::vector<long> &&latencies, const std::string &postfix) {
+void RestartServers() {
+  system("ssh client /users/POTaDOS/SQP/.local/bin/mrstart");
+  for (auto i = 1; i <= 2; i++) {
+    auto command = "ssh server" + std::to_string(i) + R"( /bin/bash <<EOF
+      source .bashrc;
+      ~/SQP/.local/mysql/support-files/mysql.server stop;
+      echo '' > ~/SQP/.local/mysql/mysqld.log;
+      rm -rf ~/.local/mysql/data;
+      cp -r ~/SQP/lobsters ~/.local/mysql/data;
+      sleep 5s;
+      ~/SQP/.local/mysql/support-files/mysql.server start;
+EOF)";
+    system(command.c_str());
+  }
+}
+
+std::vector<std::pair<int, long>> GetQueryProcessLatencies(const std::vector<int> &query_ids, const std::string &filename, int ID) {
+  std::string tmpname = std::tmpnam(nullptr);
+  const std::string &command = "scp client:" + filename + std::to_string(ID) + " " + tmpname;
+  system(command.c_str());
+  std::vector<std::pair<int, long>> query_process_latencies;
+  std::ifstream infile(tmpname);
+  if (infile.fail()) {
+    return std::move(query_process_latencies);
+  }
+  long latency;
+  for (size_t i = 0; i < query_ids.size(); i++) {
+    auto query_id = query_ids[i];
+    infile >> latency;
+    query_process_latencies.push_back(std::make_pair(query_id, latency));
+  }
+  return std::move(query_process_latencies);
+}
+
+void ClientThread(int ID, const std::string &server,
+                  const std::string &database,
+                  std::mutex &mutex,
+                  std::vector<long> &trx_latencies,
+                  std::vector<long> &query_latencies,
+                  std::vector<std::pair<int, long>> &query_process_latencies,
+                  const std::vector<int> &query_ids,
+                  const std::set<size_t> &wait_queries,
+                  const std::vector<std::pair<std::string, long>> &trace) {
+  std::vector<long> local_trx_latencies;
+  std::vector<long> local_query_latencies;
+  ::Replay(ID, server, database, wait_queries, local_query_latencies, local_trx_latencies, trace);
+  auto local_query_process_latencies = ::GetQueryProcessLatencies(query_ids, "query_process", ID);
+  {
+    std::unique_lock<std::mutex> l(mutex);
+    trx_latencies.insert(trx_latencies.end(), local_trx_latencies.begin(), local_trx_latencies.end());
+    query_latencies.insert(query_latencies.end(), local_query_latencies.begin(), local_query_latencies.end());
+    query_process_latencies.insert(query_process_latencies.end(),
+                                   local_query_process_latencies.begin(),
+                                   local_query_process_latencies.end());
+  }
+}
+
+void DumpTrxLatencies(std::vector<long> &latencies, const std::string &postfix) {
   std::ofstream latency_file("trx_latencies_" + postfix);
   for (auto latency : latencies) {
     latency_file << latency << std::endl;
@@ -293,70 +345,51 @@ void DumpQueryLatencies(const std::vector<int> &query_ids, const std::vector<lon
   std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " queries" << std::endl;
 }
 
-void AnnotateQueryProcessLatencies(const std::vector<int> &query_ids, const std::string &filename, const std::string &postfix) {
-  const std::string &command = "scp client:" + filename + " " + filename + "_" + postfix;
-  system(command.c_str());
+void DumpQueryProcessLatencies(const std::vector<std::pair<int, long>> &query_process_latencies,
+                               const std::string &filename, const std::string &postfix) {
   auto local_filename = filename + "_" + postfix;
-  std::ifstream infile(local_filename);
-  if (infile.fail()) {
-    return;
-  }
-  long latency;
-  std::vector<long> query_process_latencies;
-  while (!infile.eof()) {
-    infile >> latency;
-    query_process_latencies.push_back(latency);
-  }
-  infile.close();
   std::ofstream outfile(local_filename);
-  for (size_t i = 0; i < query_ids.size(); i++) {
-    auto query_id = query_ids[i];
-    auto latency = query_process_latencies[i];
-    outfile << query_id << ',' << latency << std::endl;
-  }
-  std::cout << "Mean query process latency is " << Mean(query_process_latencies) << "us" << std::endl;
-}
-
-void RestartServers() {
-  system("ssh client /users/POTaDOS/SQP/.local/bin/mrstart");
-  for (auto i = 1; i <= 2; i++) {
-    auto command = "ssh server" + std::to_string(i) + R"( /bin/bash <<EOF
-      source .bashrc;
-      ~/SQP/.local/mysql/support-files/mysql.server stop;
-      echo '' > ~/SQP/.local/mysql/mysqld.log;
-      rm -rf ~/.local/mysql/data;
-      cp -r ~/SQP/lobsters ~/.local/mysql/data;
-      sleep 5s;
-      ~/SQP/.local/mysql/support-files/mysql.server start;
-EOF)";
-    system(command.c_str());
+  for (auto &latency : query_process_latencies) {
+    outfile << latency.first << ',' << latency.second << std::endl;
   }
 }
 
 } // namespace
 
 int main(int argc, char *argv[]) {
-  if (argc != 4) {
-    std::cout << "Usage: " << argv[0] << " [server] [workload_trace] [postfix]" << std::endl;
+  if (argc != 6) {
+    std::cout << "Usage: " << argv[0] << " [server] [database] [num_clients] [workload_trace] [postfix]" << std::endl;
     exit(EXIT_FAILURE);
   }
   std::string server(argv[1]);
-  std::string workload_file(argv[2]);
-  std::string postfix(argv[3]);
+  std::string database(argv[2]);
+  int num_clients = atoi(argv[3]);
+  std::string workload_file(argv[4]);
+  std::string postfix(argv[5]);
   std::vector<int> query_ids;
   auto trace = ::LoadWorkloadTrace(workload_file, query_ids);
-  size_t start = 0;
+  std::set<size_t> wait_queries = LoadWaitQueries("wait_queries");
   std::vector<long> trx_latencies;
   std::vector<long> query_latencies;
-  std::set<size_t> skipped_queries;
-  std::set<size_t> wait_queries = LoadWaitQueries("wait_queries");
-  while(start != trace.size()) {
-    RestartServers();
-    start = Replay(server, start, wait_queries, query_latencies, trx_latencies, skipped_queries, trace);
+  std::vector<std::pair<int, long>> query_process_latencies;
+  std::vector<std::thread> clients;
+  RestartServers();
+  std::mutex mutex;
+  for (int i = 0; i < num_clients; i++) {
+    std::thread client([&, i]() {
+      std::cout << "Spawning client " << i << std::endl;
+      ::ClientThread(i, server, database, mutex, trx_latencies,
+                     query_latencies, query_process_latencies,
+                     query_ids, wait_queries, trace);
+    });
+    clients.push_back(std::move(client));
   }
-  ::DumpTrxLatencies(std::move(trx_latencies), postfix);
+  for (auto &client : clients) {
+    client.join();
+  }
+  ::DumpTrxLatencies(trx_latencies, postfix);
   ::DumpQueryLatencies(query_ids, query_latencies, postfix);
-  ::AnnotateQueryProcessLatencies(query_ids, "query_process", postfix);
+  ::DumpQueryProcessLatencies(query_process_latencies, "query_process", postfix);
 
   return 0;
 }

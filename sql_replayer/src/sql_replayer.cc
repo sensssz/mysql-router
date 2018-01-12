@@ -140,14 +140,20 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server, const st
   auto attempts = 0;
   while (conn == nullptr && attempts < 10) {
     try {
-      conn = driver->connect(url, "root", "");
+      sql::ConnectOptionsMap connection_properties;
+      connection_properties["hostName"] = server;
+      connection_properties["port"] = 4243;
+      connection_properties["userName"] = "root";
+      connection_properties["password"] = "";
+      connection_properties["schema"] = database;
+      connection_properties["CLIENT_MULTI_STATEMENTS"] = true;
+      conn = driver->connect(connection_properties);
       if (!conn->isValid()) {
         std::cout << "Connection fails" << std::endl;
         delete conn;
         conn = nullptr;
       } else {
         std::cout << "Connection established" << std::endl;
-        conn->setSchema(database);
         conn->setAutoCommit(false);
       }
     } catch (sql::SQLException &e) {
@@ -326,7 +332,7 @@ void ClientThread(int ID, const std::string &server,
 }
 
 void DumpTrxLatencies(std::vector<long> &latencies, const std::string &postfix) {
-  std::ofstream latency_file("trx_latencies_" + postfix);
+  std::ofstream latency_file("latencies/trx_latencies_" + postfix);
   for (auto latency : latencies) {
     latency_file << latency << std::endl;
   }
@@ -335,7 +341,7 @@ void DumpTrxLatencies(std::vector<long> &latencies, const std::string &postfix) 
 }
 
 void DumpQueryLatencies(const std::vector<int> &query_ids, const std::vector<long> &latencies, const std::string &postfix) {
-  std::ofstream latency_file("query_latencies_" + postfix);
+  std::ofstream latency_file("latencies/query_latencies_" + postfix);
   for (size_t i = 0; i < query_ids.size(); i++) {
     auto query_id = query_ids[i];
     auto latency = latencies[i];
@@ -389,7 +395,7 @@ int main(int argc, char *argv[]) {
   }
   ::DumpTrxLatencies(trx_latencies, postfix);
   ::DumpQueryLatencies(query_ids, query_latencies, postfix);
-  ::DumpQueryProcessLatencies(query_process_latencies, "query_process", postfix);
+  ::DumpQueryProcessLatencies(query_process_latencies, "latencies/query_process", postfix);
 
   return 0;
 }

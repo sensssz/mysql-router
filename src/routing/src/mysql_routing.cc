@@ -554,7 +554,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   } // while (true)
 
   client_connection.Disconnect();
-  DumpLatency(query_process_latencies, "query_process");
+  DumpLatency(query_process_latencies, "query_process" + std::to_string(ID));
 
   if (!handshake_done) {
     auto ip_array = in_addr_to_array(client_addr);

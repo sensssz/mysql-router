@@ -155,7 +155,7 @@ bool DoSpeculation(
   std::unordered_map<std::string, int> &prefetches) {
   bool previous_is_write = false;
   for (auto &speculation : prefetches) {
-    if (IsWrite(speculation)) {
+    if (IsWrite(speculation.first)) {
       previous_is_write = true;
     }
   }

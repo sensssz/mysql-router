@@ -481,6 +481,8 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   bool has_begun = false;
   int ID = -1;
   std::vector<long> query_process_latencies;
+  std::vector<long> read_latencies;
+  std::vector<long> write_latencies;
 
   auto server_group = destination_->GetServerGroup();
   if (server_group.get() == nullptr) {
@@ -573,7 +575,13 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       }
       bytes_down += packet_size;
       if (has_begun) {
-        query_process_latencies.push_back(GetDuration(query_start));
+        auto latency = GetDuration(query_start);
+        query_process_latencies.push_back();
+        if (IsRead(query)) {
+          read_latencies.push_back(latency);
+        } else {
+          write_latencies.push_back(latency);
+        }
       }
     } else {
       if (!::HandleNonQuery(server_group.get(), &client_connection, bytes_read, bytes_up, bytes_down)) {
@@ -584,6 +592,8 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
 
   client_connection.Disconnect();
   DumpLatency(query_process_latencies, "query_process" + std::to_string(ID));
+  DumpLatency(read_latencies, "read_process" + std::to_string(ID));
+  DumpLatency(write_latencies, "write_process" + std::to_string(ID));
 
   if (!handshake_done) {
     auto ip_array = in_addr_to_array(client_addr);

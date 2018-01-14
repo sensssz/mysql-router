@@ -308,11 +308,30 @@ std::vector<std::pair<int, long>> GetQueryProcessLatencies(const std::vector<int
   return std::move(query_process_latencies);
 }
 
+std::vector<long> GetQueryProcessLatencies(const std::string &filename, int ID) {
+  std::string tmpname = std::tmpnam(nullptr);
+  const std::string &command = "scp client:" + filename + std::to_string(ID) + " " + tmpname;
+  system(command.c_str());
+  std::vector<long> query_process_latencies;
+  std::ifstream infile(tmpname);
+  if (infile.fail()) {
+    return std::move(query_process_latencies);
+  }
+  long latency;
+  while (!infile.eof()) {
+    infile >> latency;
+    query_process_latencies.push_back(latency);
+  }
+  return std::move(query_process_latencies);
+}
+
 void ClientThread(int ID, const std::string &server,
                   const std::string &database,
                   std::mutex &mutex,
                   std::vector<long> &trx_latencies,
                   std::vector<long> &query_latencies,
+                  std::vector<long> &read_latencies,
+                  std::vector<long> &write_latencies,
                   std::vector<std::pair<int, long>> &query_process_latencies,
                   const std::vector<int> &query_ids,
                   const std::set<size_t> &wait_queries,
@@ -321,10 +340,14 @@ void ClientThread(int ID, const std::string &server,
   std::vector<long> local_query_latencies;
   ::Replay(ID, server, database, wait_queries, local_query_latencies, local_trx_latencies, trace);
   auto local_query_process_latencies = ::GetQueryProcessLatencies(query_ids, "query_process", ID);
+  auto local_read_latencies = ::GetQueryProcessLatencies("read_process", ID)
+  auto local_write_latencies = ::GetQueryProcessLatencies("write_process", ID)
   {
     std::unique_lock<std::mutex> l(mutex);
     trx_latencies.insert(trx_latencies.end(), local_trx_latencies.begin(), local_trx_latencies.end());
     query_latencies.insert(query_latencies.end(), local_query_latencies.begin(), local_query_latencies.end());
+    read_latencies.insert(read_latencies.end(), read_latencies.begin(), read_latencies.end());
+    write_latencies.insert(write_latencies.end(), write_latencies.begin(), write_latencies.end());
     query_process_latencies.insert(query_process_latencies.end(),
                                    local_query_process_latencies.begin(),
                                    local_query_process_latencies.end());
@@ -338,6 +361,15 @@ void DumpTrxLatencies(std::vector<long> &latencies, const std::string &postfix) 
   }
   latency_file.close();
   std::cout << "Mean latency is " << Mean(latencies) << "us out of " << latencies.size() << " transactions" << std::endl;
+}
+
+void DumpQueryLatencies(const std::vector<long> &latencies, const std::string &name, const std::string &postfix) {
+  std::ofstream latency_file("latencies/" + name + "_latencies_" + postfix);
+  for (auto &latency : latencies) {
+    latency_file << << latency << std::endl;
+  }
+  latency_file.close();
+  std::cout << "Mean " << name << " latency is " << Mean(latencies) << "us out of " << latencies.size() << " queries" << std::endl;
 }
 
 void DumpQueryLatencies(const std::vector<int> &query_ids, const std::vector<long> &latencies, const std::string &postfix) {
@@ -378,6 +410,8 @@ int main(int argc, char *argv[]) {
   std::vector<long> trx_latencies;
   std::vector<long> query_latencies;
   std::vector<std::pair<int, long>> query_process_latencies;
+  std::vector<long> read_latencies;
+  std::vector<long> write_latencies;
   std::vector<std::thread> clients;
   RestartServers();
   std::mutex mutex;
@@ -385,8 +419,8 @@ int main(int argc, char *argv[]) {
     std::thread client([&, i]() {
       std::cout << "Spawning client " << i << std::endl;
       ::ClientThread(i, server, database, mutex, trx_latencies,
-                     query_latencies, query_process_latencies,
-                     query_ids, wait_queries, trace);
+                     query_latencies, read_latencies, write_latencies,
+                     query_process_latencies, query_ids, wait_queries, trace);
     });
     clients.push_back(std::move(client));
   }
@@ -395,6 +429,8 @@ int main(int argc, char *argv[]) {
   }
   ::DumpTrxLatencies(trx_latencies, postfix);
   ::DumpQueryLatencies(query_ids, query_latencies, postfix);
+  ::DumpQueryLatencies(read_latencies, "read", postfix);
+  ::DumpQueryLatencies(write_latencies, "write", postfix);
   ::DumpQueryProcessLatencies(query_process_latencies, "latencies/query_process", postfix);
 
   return 0;

@@ -576,7 +576,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       bytes_down += packet_size;
       if (has_begun) {
         auto latency = GetDuration(query_start);
-        query_process_latencies.push_back();
+        query_process_latencies.push_back(latency);
         if (IsRead(query)) {
           read_latencies.push_back(latency);
         } else {

@@ -112,6 +112,10 @@ bool ServerGroup::SendQuery(size_t server_index, const std::string &query) {
   return server_conns_[server_index].Send(packet_size) > 0;
 }
 
+bool ServerGroup::Propagate(const std::string &query) {
+  return Propagate(query, server_conns_.size());
+}
+
 bool ServerGroup::Propagate(const std::string &query, size_t source_write_server) {
   bool error = false;
   for (size_t i = 0; i < server_conns_.size(); i++) {

@@ -153,6 +153,12 @@ bool DoSpeculation(
   int reserved_server,
   Speculator *speculator,
   std::unordered_map<std::string, int> &prefetches) {
+  bool previous_is_write = false;
+  for (auto &speculation : prefetches) {
+    if (IsWrite(speculation)) {
+      previous_is_write = true;
+    }
+  }
   prefetches.clear();
   auto speculations = speculator->Speculate(query);
   if (speculations.size() == 0) {
@@ -161,8 +167,12 @@ bool DoSpeculation(
   std::set<int> servers_in_use;
   servers_in_use.insert(reserved_server);
   bool done = false;
-  for (const auto &speculation : speculations) {
-    done = false;
+  auto speculation = speculations[0];
+  done = false;
+  if (IsRead(speculation)) {
+    if (previous_is_write) {
+      speculation = "RELEASE write_save; " + speculation;
+    }
     while (!done) {
       for (size_t i = 0; i < server_group->Size(); i++) {
         auto index = static_cast<int>(i);
@@ -178,6 +188,14 @@ bool DoSpeculation(
         done = true;
         break;
       }
+    }
+  } else {
+    auto query_to_send = "SAVEPOINT write_save; " + speculation;
+    if (previous_is_write) {
+      query_to_send = "RELEASE write_save; " + query_to_send;
+    }
+    if (!server_group->Propagate(query_to_send)) {
+      return false;
     }
   }
   return true;
@@ -226,18 +244,15 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
     // Result has been received
     log_debug("Result has already arrived");
     packet_size = CopyToClient(server_group->GetResult(server_index), client);
+  } else if (IsWrite(query)) {
+    log_debug("Result is pending");
+    server_group->WaitForServer(server_index);
+    packet_size = CopyToClient(server_group->GetResult(server_index), client);
   } else {
     log_debug("Result is pending");
     server_for_current_query = server_index;
   }
   if (IsWrite(query)) {
-    if (!server_group->Propagate(query, static_cast<size_t>(server_index))) {
-      return -1;
-    }
-    if (server_for_current_query != -1) {
-      server_group->WaitForServer(server_for_current_query);
-      packet_size = CopyToClient(server_group->GetResult(server_for_current_query), client);
-    }
     // DoSpeculation always checks whether a server is ready for query.
     if (!DoSpeculation(query, server_group, -1, speculator, prefetches)) {
       return -1;
@@ -266,11 +281,21 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
                               std::unordered_map<std::string, int> &prefetches) {
   int server = -1;
   ssize_t packet_size;
+  bool previous_is_write = false;
+  for (auto &speculation : prefetches) {
+    if (IsWrite(speculation)) {
+      previous_is_write = true;
+    }
+  }
   // Prediction not hit, send it now.
   log_debug("Prediction fails");
   if (IsWrite(query)) {
     log_debug("Got write query, forward it to all servers...");
-    if (!server_group->ForwardToAll(query)) {
+    auto query_to_send = query;
+    if (previous_is_write) {
+      query_to_send = "RELEASE write_save; " + query;
+    }
+    if (!server_group->ForwardToAll(query_to_send)) {
       log_error("Failed to forward query to servers");
       return -1;
     }
@@ -293,7 +318,11 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       log_error("Failed to get available server");
       return -1;
     }
-    if (!server_group->SendQuery(server, query)) {
+    auto query_to_send = query;
+    if (previous_is_write) {
+      query_to_send = "RELEASE write_save; " + query;
+    }
+    if (!server_group->SendQuery(server, query_to_send)) {
       log_error("Failed to send query to server");
       return -1;
     }

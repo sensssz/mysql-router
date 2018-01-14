@@ -340,8 +340,8 @@ void ClientThread(int ID, const std::string &server,
   std::vector<long> local_query_latencies;
   ::Replay(ID, server, database, wait_queries, local_query_latencies, local_trx_latencies, trace);
   auto local_query_process_latencies = ::GetQueryProcessLatencies(query_ids, "query_process", ID);
-  auto local_read_latencies = ::GetQueryProcessLatencies("read_process", ID)
-  auto local_write_latencies = ::GetQueryProcessLatencies("write_process", ID)
+  auto local_read_latencies = ::GetQueryProcessLatencies("read_process", ID);
+  auto local_write_latencies = ::GetQueryProcessLatencies("write_process", ID);
   {
     std::unique_lock<std::mutex> l(mutex);
     trx_latencies.insert(trx_latencies.end(), local_trx_latencies.begin(), local_trx_latencies.end());
@@ -366,7 +366,7 @@ void DumpTrxLatencies(std::vector<long> &latencies, const std::string &postfix) 
 void DumpQueryLatencies(const std::vector<long> &latencies, const std::string &name, const std::string &postfix) {
   std::ofstream latency_file("latencies/" + name + "_latencies_" + postfix);
   for (auto &latency : latencies) {
-    latency_file << << latency << std::endl;
+    latency_file << latency << std::endl;
   }
   latency_file.close();
   std::cout << "Mean " << name << " latency is " << Mean(latencies) << "us out of " << latencies.size() << " queries" << std::endl;

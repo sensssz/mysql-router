@@ -283,7 +283,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   ssize_t packet_size;
   bool previous_is_write = false;
   for (auto &speculation : prefetches) {
-    if (IsWrite(speculation)) {
+    if (IsWrite(speculation.first)) {
       previous_is_write = true;
     }
   }

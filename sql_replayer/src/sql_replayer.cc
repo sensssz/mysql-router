@@ -346,8 +346,8 @@ void ClientThread(int ID, const std::string &server,
     std::unique_lock<std::mutex> l(mutex);
     trx_latencies.insert(trx_latencies.end(), local_trx_latencies.begin(), local_trx_latencies.end());
     query_latencies.insert(query_latencies.end(), local_query_latencies.begin(), local_query_latencies.end());
-    read_latencies.insert(read_latencies.end(), read_latencies.begin(), read_latencies.end());
-    write_latencies.insert(write_latencies.end(), write_latencies.begin(), write_latencies.end());
+    read_latencies.insert(read_latencies.end(), local_read_latencies.begin(), local_read_latencies.end());
+    write_latencies.insert(write_latencies.end(), local_write_latencies.begin(), local_write_latencies.end());
     query_process_latencies.insert(query_process_latencies.end(),
                                    local_query_process_latencies.begin(),
                                    local_query_process_latencies.end());

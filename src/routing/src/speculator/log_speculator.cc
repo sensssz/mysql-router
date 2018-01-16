@@ -43,7 +43,7 @@ std::vector<std::string> LogSpeculator::Speculate(const std::string &query, int 
   return std::move(speculations);
 }
 
-std::vector<std::string> TrySpeculate(const std::string &query, int num_speculations) {
+std::vector<std::string> LogSpeculator::TrySpeculate(const std::string &query, int num_speculations) {
   std::vector<std::string> speculations;
   // return std::move(speculations);
   if (!start_ || current_query_ == -1) {

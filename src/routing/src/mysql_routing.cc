@@ -252,7 +252,7 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
                           std::unordered_map<std::string, int> &prefetches) {
   int server_for_current_query = -1;
   size_t packet_size = 0;
-  size-t bytes_to_skip = speculative_bytes_to_skip;
+  size_t bytes_to_skip = speculative_bytes_to_skip;
   log_debug("Prediction hits, check for result");
   if (server_group->IsReadyForQuery(server_index)) {
     // Result has been received
@@ -310,7 +310,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     query_to_send = "RELEASE SAVEPOINT write_save; " + query;
     bytes_to_skip += kReleaseResultBytes;
   }
-  bool specultion_is_write = false;
+  bool speculation_is_write = false;
   auto next_speculation = speculator->TrySpeculate(query, 1);
   if (IsWrite(next_speculation[0])) {
     speculation_is_write = true;

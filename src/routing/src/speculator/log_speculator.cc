@@ -45,7 +45,7 @@ std::vector<std::string> LogSpeculator::Speculate(const std::string &query, int 
   }
   current_query_++;
   int rand_num = dist_(rand_gen_);
-  if (rand_num <= 100) {
+  if (rand_num <= 58) {
     auto &next_query = queries_[current_query_];
     if (next_query.find("SELECT") == 0) {
       log_debug("Will make prediction hit with %s", next_query.c_str());
@@ -56,7 +56,11 @@ std::vector<std::string> LogSpeculator::Speculate(const std::string &query, int 
     num_speculations--;
   }
   while (num_speculations > 0) {
-    speculations.push_back(queries_[index_dist_(rand_index_)]);
+    auto query = queries_[index_dist_(rand_index_)];
+    if (query == "BEGIN" || query == "COMMIT") {
+      continue;
+    }
+    speculations.push_back(query);
     num_speculations--;
   }
 

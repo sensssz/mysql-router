@@ -171,7 +171,7 @@ bool DoSpeculation(
   servers_in_use.insert(reserved_server);
   bool done = false;
   auto speculation = speculations[0];
-  std::string query_to_send;
+  std::string query_to_send = speculation;
   done = false;
   if (IsRead(speculation)) {
     if (previous_is_write) {

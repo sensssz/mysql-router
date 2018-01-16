@@ -192,7 +192,7 @@ bool DoSpeculation(
       }
     }
   } else {
-    auto query_to_send = "SAVEPOINT write_save; " + speculation;
+    query_to_send = "SAVEPOINT write_save; " + speculation;
     if (previous_is_write) {
       query_to_send = "RELEASE write_save; " + query_to_send;
     }

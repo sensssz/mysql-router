@@ -25,6 +25,7 @@ public:
     return Speculate(query, 1);
   }
   virtual std::vector<std::string> Speculate(const std::string &query, int num_speculations=1) override;
+  virtual std::vector<std::string> TrySpeculate(const std::string &query, int num_speculations) override;
 
 private:
   std::vector<std::string> queries_;

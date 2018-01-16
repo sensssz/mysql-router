@@ -38,15 +38,20 @@ void LogSpeculator::CheckBegin(const std::string &query) {
 }
 
 std::vector<std::string> LogSpeculator::Speculate(const std::string &query, int num_speculations) {
+  auto speculations = TrySpeculate(query, num_speculations);
+  current_query_++;
+  return std::move(speculations);
+}
+
+std::vector<std::string> TrySpeculate(const std::string &query, int num_speculations) {
   std::vector<std::string> speculations;
   // return std::move(speculations);
   if (!start_ || current_query_ == -1) {
     return speculations;
   }
-  current_query_++;
   int rand_num = dist_(rand_gen_);
   if (rand_num <= 58) {
-    auto &next_query = queries_[current_query_];
+    auto &next_query = queries_[current_query_ + 1];
     if (next_query.find("SELECT") == 0) {
       log_debug("Will make prediction hit with %s", next_query.c_str());
       speculations.push_back(next_query);
@@ -65,4 +70,5 @@ std::vector<std::string> LogSpeculator::Speculate(const std::string &query, int 
   }
 
   return std::move(speculations);
+
 }

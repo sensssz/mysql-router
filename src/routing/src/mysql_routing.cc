@@ -213,7 +213,7 @@ bool DoSpeculation(
 
 size_t CopyToClient(std::pair<uint8_t*, size_t> &&result, size_t bytes_to_skip, Connection *client) {
   memcpy(client->Buffer(), result.first + bytes_to_skip, result.second - bytes_to_skip);
-  uint8_t seq_num_to_substract = static_cast<uint8_t>(bytes_to_skip / kSavepointResultBytes);
+  uint8_t seq_num_to_substract = static_cast<uint8_t>(bytes_to_skip / kSavepointResultBytes) * 2;
   client->Buffer()[kMySQLSeqOffset] -= seq_num_to_substract;
   return result.second - bytes_to_skip;
 }
@@ -252,7 +252,7 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
                           std::unordered_map<std::string, int> &prefetches) {
   int server_for_current_query = -1;
   size_t packet_size = 0;
-  auto bytes_to_skip = speculative_bytes_to_skip;
+  size-t bytes_to_skip = speculative_bytes_to_skip;
   log_debug("Prediction hits, check for result");
   if (server_group->IsReadyForQuery(server_index)) {
     // Result has been received
@@ -305,15 +305,20 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     }
   }
   size_t bytes_to_skip = 0;
+  auto query_to_send = query;
+  if (previous_is_write) {
+    query_to_send = "RELEASE SAVEPOINT write_save; " + query;
+    bytes_to_skip += kReleaseResultBytes;
+  }
+  bool specultion_is_write = false;
+  auto next_speculation = speculator->TrySpeculate(query, 1);
+  if (IsWrite(next_speculation[0])) {
+    speculation_is_write = true;
+  }
   // Prediction not hit, send it now.
   log_debug("Prediction fails");
   if (IsWrite(query)) {
     log_debug("Got write query, forward it to all servers...");
-    auto query_to_send = query;
-    if (previous_is_write) {
-      query_to_send = "RELEASE SAVEPOINT write_save; " + query;
-      bytes_to_skip += kReleaseResultBytes;
-    }
     log_info("Query sent to all is %s", query_to_send.c_str());
     if (!server_group->ForwardToAll(query_to_send)) {
       log_error("Failed to forward query to servers");
@@ -338,22 +343,26 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       log_error("Failed to get available server");
       return -1;
     }
-    auto query_to_send = query;
-    if (previous_is_write) {
-      query_to_send = "RELEASE SAVEPOINT write_save; " + query;
-      bytes_to_skip += kReleaseResultBytes;
-    }
     log_info("Query sent to %d is %s", server, query_to_send.c_str());
     if (!server_group->SendQuery(server, query_to_send)) {
       log_error("Failed to send query to server");
       return -1;
     }
-    if (!DoSpeculation(query, server_group, server, speculator, speculative_bytes_to_skip, prefetches)) {
-      log_error("Failed to send speculations");
-      return -1;
+    if (speculation_is_write) {
+      server_group->WaitForServer(server);
+      packet_size = CopyToClient(server_group->GetResult(server), bytes_to_skip, client);
+      if (!DoSpeculation(query, server_group, server, speculator, speculative_bytes_to_skip, prefetches)) {
+        log_error("Failed to send speculations");
+        return -1;
+      }
+    } else {
+      if (!DoSpeculation(query, server_group, server, speculator, speculative_bytes_to_skip, prefetches)) {
+        log_error("Failed to send speculations");
+        return -1;
+      }
+      server_group->WaitForServer(server);
+      packet_size = CopyToClient(server_group->GetResult(server), bytes_to_skip, client);
     }
-    server_group->WaitForServer(server);
-    packet_size = CopyToClient(server_group->GetResult(server), bytes_to_skip, client);
   }
   log_debug("Send results back to client");
   if (client->Send(packet_size) <= 0) {

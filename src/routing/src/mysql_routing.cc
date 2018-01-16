@@ -168,10 +168,11 @@ bool DoSpeculation(
   servers_in_use.insert(reserved_server);
   bool done = false;
   auto speculation = speculations[0];
+  std::string query_to_send;
   done = false;
   if (IsRead(speculation)) {
     if (previous_is_write) {
-      speculation = "RELEASE write_save; " + speculation;
+      query_to_send = "RELEASE write_save; " + speculation;
     }
     while (!done) {
       for (size_t i = 0; i < server_group->Size(); i++) {
@@ -180,7 +181,8 @@ bool DoSpeculation(
             !server_group->IsReadyForQuery(i)) {
           continue;
         }
-        if (!server_group->SendQuery(i, speculation)) {
+        log_info("Speculative query sent to %d is %s", i, query_to_send.c_str());
+        if (!server_group->SendQuery(i, query_to_send)) {
           return false;
         }
         prefetches[speculation] = index;
@@ -194,9 +196,11 @@ bool DoSpeculation(
     if (previous_is_write) {
       query_to_send = "RELEASE write_save; " + query_to_send;
     }
-    if (!server_group->Propagate(query_to_send)) {
+    log_info("Speculative query sent to all is %s", query_to_send.c_str());
+    if (!server_group->ForwardToAll(query_to_send)) {
       return false;
     }
+    prefetches[speculation] = 0;
   }
   return true;
 }
@@ -295,6 +299,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     if (previous_is_write) {
       query_to_send = "RELEASE write_save; " + query;
     }
+    log_info("Query sent to all is %s", query_to_send.c_str());
     if (!server_group->ForwardToAll(query_to_send)) {
       log_error("Failed to forward query to servers");
       return -1;
@@ -322,6 +327,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     if (previous_is_write) {
       query_to_send = "RELEASE write_save; " + query;
     }
+    log_info("Query sent to %d is %s", server, query_to_send.c_str());
     if (!server_group->SendQuery(server, query_to_send)) {
       log_error("Failed to send query to server");
       return -1;

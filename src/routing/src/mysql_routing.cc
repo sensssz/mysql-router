@@ -213,7 +213,7 @@ bool DoSpeculation(
 
 size_t CopyToClient(std::pair<uint8_t*, size_t> &&result, size_t bytes_to_skip, Connection *client) {
   memcpy(client->Buffer(), result.first + bytes_to_skip, result.second - bytes_to_skip);
-  seq_num_to_substract = bytes_to_skip / kSavepointResultBytes;
+  uint8_t seq_num_to_substract = static_cast<uint8_t>(bytes_to_skip / kSavepointResultBytes);
   client->Buffer()[kMySQLSeqOffset] -= seq_num_to_substract;
   return result.second - bytes_to_skip;
 }

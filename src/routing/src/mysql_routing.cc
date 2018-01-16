@@ -267,11 +267,12 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
   speculative_bytes_to_skip = 0;
   if (IsWrite(query)) {
     // DoSpeculation always checks whether a server is ready for query.
-    if (!DoSpeculation(query, server_group, -1, speculator, prefetches)) {
+    if (!DoSpeculation(query, server_group, -1, speculator, speculative_bytes_to_skip, prefetches)) {
       return -1;
     }
   } else {
-    if (!DoSpeculation(query, server_group, server_for_current_query, speculator, prefetches)) {
+    if (!DoSpeculation(query, server_group, server_for_current_query, speculator,
+                       speculative_bytes_to_skip, prefetches)) {
       return -1;
     }
     if (server_for_current_query != -1) {

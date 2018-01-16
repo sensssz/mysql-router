@@ -312,7 +312,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   }
   bool speculation_is_write = false;
   auto next_speculation = speculator->TrySpeculate(query, 1);
-  if (IsWrite(next_speculation[0])) {
+  if (next_speculation.size() > 0 && IsWrite(next_speculation[0])) {
     speculation_is_write = true;
   }
   // Prediction not hit, send it now.
@@ -397,7 +397,7 @@ MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
       bind_named_socket_(named_socket),
       service_tcp_(0),
       service_named_socket_(0),
-      speculator_(new LogSpeculator("/users/POTaDOS/SQP/lobsters.sql")),
+      speculator_(new LogSpeculator("/users/POTaDOS/SQP/auctionmark.sql")),
       stopping_(false),
       info_active_routes_(0),
       info_handled_routes_(0),
@@ -512,6 +512,8 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   bool has_begun = false;
   size_t speculative_bytes_to_skip = 0;
   int ID = -1;
+  size_t num_misses = 0;
+  size_t num_queries = 0;
   std::vector<long> query_process_latencies;
   std::vector<long> read_latencies;
   std::vector<long> write_latencies;
@@ -593,6 +595,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);
       log_debug("Query is %s", query.c_str());
+      num_queries++;
       auto iter = prefetches.find(query);
       ssize_t packet_size = -1;
       if (iter != prefetches.end()) {
@@ -600,6 +603,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
                                              &client_connection, speculator_.get(),
                                              speculative_bytes_to_skip, prefetches);
       } else {
+        num_misses++;
         packet_size = ::HandleSpeculationMiss(server_group.get(), query, &client_connection,
                                               speculator_.get(), speculative_bytes_to_skip,
                                               prefetches);
@@ -628,6 +632,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   DumpLatency(query_process_latencies, "query_process" + std::to_string(ID));
   DumpLatency(read_latencies, "read_process" + std::to_string(ID));
   DumpLatency(write_latencies, "write_process" + std::to_string(ID));
+  log_info("%lu misses out of %lu queries", num_misses, num_queries);
 
   if (!handshake_done) {
     auto ip_array = in_addr_to_array(client_addr);

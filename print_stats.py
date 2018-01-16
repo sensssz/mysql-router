@@ -19,6 +19,7 @@ def load_latencies(filename):
     latencies[query_id].append(latency)
   return latencies, query_count
 
+
 def load_plain_latencies(filename):
   ''' Load latencies from file.
   '''
@@ -51,6 +52,7 @@ def calc_stats(ori_latencies, sqp_latencies, query_count, aggregate_name, aggreg
   overall_speedup = ori_latency_stat / sqp_latency_stat
   print '%s, Overall, 100, %f, %f, %f\n' % (aggregate_name, ori_latency_stat,
                                             sqp_latency_stat, overall_speedup)
+
 
 def calc_plain_stats(ori_latencies, sqp_latencies, aggregate_name, aggregator):
   ''' Calculate stats about original latency and SQP latency

@@ -19,12 +19,16 @@ LogSpeculator::LogSpeculator(const std::string &filename) : start_(false), curre
   std::string line;
   while (!infile.eof()) {
     std::getline(infile, line);
+    queries_.push_back(line);
+    /*
     if (line.find("SELECT") == 0 ||
         line.find("BEGIN") == 0 ||
         line.find("COMMIT") == 0) {
       queries_.push_back(line);
     }
+    */
   }
+  index_dist_ = std::uniform_int_distribution<int>(0, static_cast<int>(queries_.size() - 1));
 }
 
 void LogSpeculator::CheckBegin(const std::string &query) {
@@ -51,8 +55,9 @@ std::vector<std::string> LogSpeculator::Speculate(const std::string &query, int 
     }
     num_speculations--;
   }
-  if (num_speculations > 0) {
-    speculations.insert(speculations.end(), fake_speculations.begin(), fake_speculations.begin() + num_speculations);
+  while (num_speculations > 0) {
+    speculations.push_back(queries_[index_dist_(rand_index_)]);
+    num_speculations--;
   }
 
   return std::move(speculations);

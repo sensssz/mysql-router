@@ -32,6 +32,8 @@ private:
   int current_query_;
   std::default_random_engine rand_gen_;
   std::uniform_int_distribution<int> dist_;
+  std::default_random_engine rand_index_;
+  std::uniform_int_distribution<int> index_dist_;
 
   int ExtractKeyValue(const std::string &query);
 };

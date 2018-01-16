@@ -86,6 +86,7 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(
       think_time = pair.second - prev_timestamp;
     }
     res.push_back(std::make_pair(pair.first, think_time));
+    query_ids.push_back(parser.GetQueryId(pair.first));
     prev_timestamp = pair.second;
     if (pair.first.find("BEGIN") == 0) {
       current_size = 0;
@@ -99,12 +100,10 @@ std::vector<std::pair<std::string, long>> LoadWorkloadTrace(
       num_reads++;
       current_size++;
       times.push_back(think_time);
-      query_ids.push_back(parser.GetQueryId(pair.first));
     } else {
       num_writes++;
       current_size++;
       times.push_back(think_time);
-      res.pop_back();
     }
   }
   parser.DumpTemplates("templates");

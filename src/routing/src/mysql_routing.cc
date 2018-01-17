@@ -235,6 +235,7 @@ size_t CopyToClient(std::pair<uint8_t*, size_t> &&result, size_t bytes_to_skip, 
   memcpy(client->Buffer(), result.first + bytes_to_skip, result.second - bytes_to_skip);
   uint8_t seq_num_to_substract = static_cast<uint8_t>(bytes_to_skip / kSavepointResultBytes) * 2;
   client->Buffer()[kMySQLSeqOffset] -= seq_num_to_substract;
+  std::cerr << bytes_to_skip << " bytes to skip" << std::endl;
   return result.second - bytes_to_skip;
 }
 
@@ -631,9 +632,11 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         continue;
       }
       bool is_begin = query == "BEGIN";
-      SetHaveSavepoint(have_savepoint, false);
-      SetNeedRollback(need_rollback, false);
-      SetBytesToSkip(speculative_bytes_to_skip, 0);
+      if (is_begin) {
+        SetHaveSavepoint(have_savepoint, false);
+        SetNeedRollback(need_rollback, false);
+        SetBytesToSkip(speculative_bytes_to_skip, 0);
+      }
       has_begun = has_begun || query == "BEGIN";
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);

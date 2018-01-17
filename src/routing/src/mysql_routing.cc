@@ -158,9 +158,9 @@ void SetNeedRollback(std::vector<bool> &need_rollback, bool need) {
   }
 }
 
-void SetBytesToSkip(std::vector<long> &bytes_to_skip, long bytes_to_skip) {
-  for (size_t i = 0; i < need_rollback.size(); i++) {
-    need_rollback[i] = bytes_to_skip;
+void SetBytesToSkip(std::vector<long> &bytes_to_skip, long bytes) {
+  for (size_t i = 0; i < bytes_to_skip.size(); i++) {
+    bytes_to_skip[i] = bytes;
   }
 }
 
@@ -320,7 +320,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
                               Speculator *speculator,
                               std::vector<bool> &have_savepoint,
                               std::vector<bool> &need_rollback,
-                              size_t &speculative_bytes_to_skip,
+                              std::vector<long> &speculative_bytes_to_skip,
                               std::unordered_map<std::string, int> &prefetches) {
   int server = -1;
   ssize_t packet_size;

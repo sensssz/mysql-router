@@ -631,9 +631,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         continue;
       }
       bool is_begin = query == "BEGIN";
-      SetHaveSavepoint(false);
-      SetNeedRollback(false);
-      SetBytesToSkip(0);
+      SetHaveSavepoint(have_savepoint, false);
+      SetNeedRollback(need_rollback, false);
+      SetBytesToSkip(speculative_bytes_to_skip, 0);
       has_begun = has_begun || query == "BEGIN";
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);

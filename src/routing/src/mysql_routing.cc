@@ -169,12 +169,6 @@ bool DoSpeculation(
   std::vector<bool> &need_rollback,
   size_t &speculative_bytes_to_skip,
   std::unordered_map<std::string, int> &prefetches) {
-  bool previous_is_write = false;
-  for (auto &speculation : prefetches) {
-    if (IsWrite(speculation.first)) {
-      previous_is_write = true;
-    }
-  }
   prefetches.clear();
   auto speculations = speculator->Speculate(query);
   if (speculations.size() == 0) {
@@ -188,7 +182,7 @@ bool DoSpeculation(
     while (!done) {
       for (size_t i = 0; i < server_group->Size(); i++) {
         auto index = static_cast<int>(i);
-        if (index != reserved_server ||
+        if (index == reserved_server ||
             !server_group->IsReadyForQuery(i)) {
           continue;
         }

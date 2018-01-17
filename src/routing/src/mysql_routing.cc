@@ -158,6 +158,12 @@ void SetNeedRollback(std::vector<bool> &need_rollback, bool need) {
   }
 }
 
+void SetBytesToSkip(std::vector<long> &bytes_to_skip, long bytes_to_skip) {
+  for (size_t i = 0; i < need_rollback.size(); i++) {
+    need_rollback[i] = bytes_to_skip;
+  }
+}
+
 // The reserved_server is necessary because there may be a gap between
 // checking the result has arrived and the checks below.
 bool DoSpeculation(
@@ -167,9 +173,10 @@ bool DoSpeculation(
   Speculator *speculator,
   std::vector<bool> &have_savepoint,
   std::vector<bool> &need_rollback,
-  size_t &speculative_bytes_to_skip,
+  std::vector<long> &speculative_bytes_to_skip,
   std::unordered_map<std::string, int> &prefetches) {
   prefetches.clear();
+  SetBytesToSkip(speculative_bytes_to_skip, 0);
   auto speculations = speculator->Speculate(query);
   if (speculations.size() == 0) {
     return true;
@@ -189,6 +196,7 @@ bool DoSpeculation(
         if (need_rollback[i]) {
           query_to_send = "ROLLBACK to write_save; " + speculation;
           need_rollback[i] = false;
+          speculative_bytes_to_skip[i] += kSavepointResultBytes;
         }
         log_info("Speculative query sent to %d is %s", i, query_to_send.c_str());
         if (!server_group->SendQuery(i, query_to_send)) {
@@ -202,14 +210,14 @@ bool DoSpeculation(
   } else {
     for (size_t i = 0; i < server_group->Size(); i++) {
       query_to_send = "SAVEPOINT write_save; " + speculation;
-      speculative_bytes_to_skip += kSavepointResultBytes;
+      speculative_bytes_to_skip[i] += kSavepointResultBytes;
       if (need_rollback[i]) {
         query_to_send = "ROLLBACK to write_save; " + query_to_send;
-        speculative_bytes_to_skip += kSavepointResultBytes;
+        speculative_bytes_to_skip[i] += kSavepointResultBytes;
         need_rollback[i] = false;
       } else if (have_savepoint[i]) {
         query_to_send = "RELEASE SAVEPOINT write_save; " + query_to_send;
-        speculative_bytes_to_skip += kSavepointResultBytes;
+        speculative_bytes_to_skip[i] += kSavepointResultBytes;
       }
       have_savepoint[i] = true;
       log_info("Speculative query sent to %lu is %s", i, query_to_send.c_str());
@@ -262,11 +270,11 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
                           Speculator *speculator,
                           std::vector<bool> &have_savepoint,
                           std::vector<bool> &need_rollback,
-                          size_t &speculative_bytes_to_skip,
+                          std::vector<long> &speculative_bytes_to_skip,
                           std::unordered_map<std::string, int> &prefetches) {
   int server_for_current_query = -1;
   size_t packet_size = 0;
-  size_t bytes_to_skip = speculative_bytes_to_skip;
+  size_t bytes_to_skip = speculative_bytes_to_skip[server_index];
   log_debug("Prediction hits, check for result");
   if (server_group->IsReadyForQuery(server_index)) {
     // Result has been received
@@ -280,7 +288,6 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
     log_debug("Result is pending");
     server_for_current_query = server_index;
   }
-  speculative_bytes_to_skip = 0;
   if (IsWrite(query)) {
     // DoSpeculation always checks whether a server is ready for query.
     if (!DoSpeculation(query, server_group, -1, speculator,
@@ -535,7 +542,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   Connection client_connection(client, routing::SocketOperations::instance());
   std::unordered_map<std::string, int> prefetches;
   bool has_begun = false;
-  size_t speculative_bytes_to_skip = 0;
   int ID = -1;
   size_t num_misses = 0;
   size_t num_queries = 0;
@@ -544,6 +550,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::vector<long> write_latencies;
   std::vector<bool> have_savepoint;
   std::vector<bool> need_rollback;
+  std::vector<long> speculative_bytes_to_skip;
 
   auto server_group = destination_->GetServerGroup();
   if (server_group.get() == nullptr) {
@@ -559,6 +566,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::vector<bool> all_false(server_group->Size(), false);
   have_savepoint = all_false;
   need_rollback = all_false;
+  speculative_bytes_to_skip = std::vector<long>(server_group->Size(), 0);
 
   // int server = destination_->get_server_socket(destination_connect_timeout_, &error);
   int server = 1;
@@ -622,6 +630,10 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         client_connection.Send(kOkPacket, sizeof(kOkPacket));
         continue;
       }
+      bool is_begin = query == "BEGIN";
+      SetHaveSavepoint(false);
+      SetNeedRollback(false);
+      SetBytesToSkip(0);
       has_begun = has_begun || query == "BEGIN";
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);

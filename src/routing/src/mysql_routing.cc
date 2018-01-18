@@ -373,8 +373,8 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       }
       server_group->WaitForServer(server);
     }
-    log_info("Query sent to %d is %s", server, query_to_send.c_str());
-    if (!server_group->SendQuery(server, query_to_send)) {
+    log_info("Query sent to %d is %s", server, query.c_str());
+    if (!server_group->SendQuery(server, query)) {
       log_error("Failed to send query to server");
       return -1;
     }

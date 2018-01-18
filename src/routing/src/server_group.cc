@@ -89,9 +89,12 @@ int ServerGroup::Write(uint8_t *buffer, size_t size) {
   }
 }
 
-std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index) {
+std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index, int num_skips) {
   if (has_outstanding_request_[server_index] || read_results_[server_index] <= 0) {
     return std::make_pair(nullptr, 0);
+  }
+  for (int i = 0; i < num_skips; i++) {
+    read_results_[server_index] = server_conns_[server_index].Read();
   }
   return std::make_pair(server_conns_[server_index].Buffer(),
                         static_cast<size_t>(read_results_[server_index]));

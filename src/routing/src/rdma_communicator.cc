@@ -133,6 +133,7 @@ void RdmaCommunicator::OnWorkCompletion(Context *context, struct ibv_wc *wc) {
     return;
   }
   if (wc->opcode & IBV_WC_RECV) {
+    PostReceive(context);
     size_t size = *(reinterpret_cast<size_t *>(context->recv_region));
     // std::cerr << "Response of size " << size << " received, pushing to the buffer" << std::endl;
     if (size == kMySQLMaxPacketLen) {

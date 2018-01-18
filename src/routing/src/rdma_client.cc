@@ -60,13 +60,15 @@ ssize_t RdmaClient::SendToServer(void *buffer, size_t size) {
   // posted on the other side. Although we set rnr_retry_count to
   // infinity, if this happens a lot, there will be a huge performance
   // degradation. Therefore, we pre-post a receive before the send.
+  /*
   auto s = PostReceive(context_);
   if (!s.ok()) {
     return -1;
   }
+  */
   *(reinterpret_cast<size_t *>(context_->send_region)) = size;
   memcpy(context_->send_region + sizeof(size), buffer, size);
-  s = PostSend(context_, size + sizeof(size));
+  auto s = PostSend(context_, size + sizeof(size));
   if (s.ok()) {
     // std::cerr << size << " bytes sent" << std::endl;
     // ShowBinaryData(reinterpret_cast<char *>(buffer), size);

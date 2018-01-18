@@ -320,6 +320,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   int server = -1;
   ssize_t packet_size;
   bool previous_is_write = false;
+  SetNeedRollback(need_rollback, false);
   for (auto &speculation : prefetches) {
     if (IsWrite(speculation.first)) {
       previous_is_write = true;
@@ -342,12 +343,12 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
         return -1;
       }
       server_group->WaitForAll();
+      SetHaveSavepoint(have_savepoint, false);
     }
     if (!server_group->ForwardToAll(query)) {
       log_error("Failed to forward query to servers");
       return -1;
     }
-    SetNeedRollback(need_rollback, false);
     log_debug("Query forwarded to all servers, waiting for one of them to be available");
     server = server_group->GetAvailableServer();
     log_debug("Got server %d to read result from", server);
@@ -374,12 +375,13 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
         return -1;
       }
       server_group->WaitForServer(server);
+      need_rollback[server] = false;
+      have_savepoint[server] = false;
     }
     if (!server_group->SendQuery(server, query)) {
       log_error("Failed to send query to server");
       return -1;
     }
-    need_rollback[server] = false;
     if (speculation_is_write) {
       server_group->WaitForServer(server);
       packet_size = CopyToClient(server_group->GetResult(server), client);

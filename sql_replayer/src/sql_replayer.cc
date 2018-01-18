@@ -280,7 +280,7 @@ void RestartServers() {
     auto command = "ssh server" + std::to_string(i) + R"( /bin/bash <<EOF
       source .bashrc;
       ~/SQP/.local/mysql/support-files/mysql.server stop;
-      echo '' > ~/SQP/.local/mysql/mysqld.log;
+      echo '' > ~/.local/mysql/mysqld.log;
       rm -rf ~/.local/mysql/data;
       cp -r ~/SQP/lobsters ~/.local/mysql/data;
       sleep 5s;

@@ -277,7 +277,7 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
     // Result has been received
     log_debug("Result has already arrived");
     packet_size = CopyToClient(server_group->GetResult(server_index), client);
-  } {
+  } else {
     log_debug("Result is pending");
     server_for_current_query = server_index;
   }

@@ -25,6 +25,7 @@ public:
   bool Propagate(const std::string &query, size_t source_write_server);
   bool IsReadyForQuery(size_t server_index);
   void WaitForServer(size_t server_index);
+  void WaitForAll();
   bool ForwardToAll(const std::string &query);
   int GetAvailableServer();
   bool IsExitPacket(uint8_t *buffer, size_t size);

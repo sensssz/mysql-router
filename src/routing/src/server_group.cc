@@ -190,6 +190,12 @@ void ServerGroup::WaitForServer(size_t server_index) {
   }
 }
 
+void ServerGroup::WaitForAll() {
+  for (size_t i = 0; i < server_conns_.size(); i++) {
+    WaitForServer(i);
+  }
+}
+
 bool ServerGroup::IsExitPacket(uint8_t *buffer, size_t size) {
   if (size != kExitPacketSize) {
     return false;

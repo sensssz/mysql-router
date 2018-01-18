@@ -3,14 +3,6 @@
 
 #include <fstream>
 
-static std::vector<std::string> fake_speculations{
-  "SELECT  `keystores`.* FROM `keystores`  WHERE `keystores`.`key` = 'traffic:date'  ORDER BY `keystores`.`key` ASC LIMIT 1",
-  "SELECT  `keystores`.* FROM `keystores`  WHERE `keystores`.`key` = 'traffic:hits'  ORDER BY `keystores`.`key` ASC LIMIT 1",
-  "SELECT  `keystores`.* FROM `keystores`  WHERE `keystores`.`key` = 'user:2:unread_messages'  ORDER BY `keystores`.`key` ASC LIMIT 1",
-  "SELECT COUNT(*) FROM `invitation_requests`  WHERE `invitation_requests`.`is_verified` = 1",
-  "SELECT `users`.* FROM `users`  WHERE `users`.`id` IN (9, 8, 6, 5, 4, 3, 2, 276, 274, 273, 272, 271, 265, 263, 262, 260, 255, 251, 247, 245)"
-};
-
 LogSpeculator::LogSpeculator(const std::string &filename) : start_(false), current_query_(0), dist_(1, 100) {
   std::ifstream infile(filename);
   if (infile.fail()) {
@@ -20,13 +12,6 @@ LogSpeculator::LogSpeculator(const std::string &filename) : start_(false), curre
   while (!infile.eof()) {
     std::getline(infile, line);
     queries_.push_back(line);
-    /*
-    if (line.find("SELECT") == 0 ||
-        line.find("BEGIN") == 0 ||
-        line.find("COMMIT") == 0) {
-      queries_.push_back(line);
-    }
-    */
   }
   index_dist_ = std::uniform_int_distribution<int>(0, static_cast<int>(queries_.size() - 1));
 }

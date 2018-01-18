@@ -94,7 +94,7 @@ std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index, int num_
     return std::make_pair(nullptr, 0);
   }
   for (int i = 0; i < num_skips; i++) {
-    read_results_[server_index] = server_conns_[server_index].Read();
+    read_results_[server_index] = server_conns_[server_index].Recv();
   }
   return std::make_pair(server_conns_[server_index].Buffer(),
                         static_cast<size_t>(read_results_[server_index]));

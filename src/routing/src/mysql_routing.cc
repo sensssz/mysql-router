@@ -368,7 +368,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       log_error("Failed to get available server");
       return -1;
     }
-    if (!server_group->SendQuery("ROLLBACK to write_save")) {
+    if (!server_group->SendQuery(server, "ROLLBACK to write_save")) {
       return -1;
     }
     server_group->WaitForServer(server);

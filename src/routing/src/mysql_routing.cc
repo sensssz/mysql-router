@@ -336,6 +336,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   if (IsWrite(query)) {
     log_debug("Got write query, forward it to all servers...");
     if (previous_is_write) {
+      server_group->WaitForAll();
       if (!server_group->ForwardToAll("ROLLBACK to write_save")) {
         log_error("Failed to forward query to servers");
         return -1;
@@ -382,7 +383,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     if (speculation_is_write) {
       server_group->WaitForServer(server);
       packet_size = CopyToClient(server_group->GetResult(server), client);
-      if (!DoSpeculation(query, server_group, server, speculator, have_savepoint,
+      if (!DoSpeculation(query, server_group, -1, speculator, have_savepoint,
                          need_rollback, prefetches)) {
         log_error("Failed to send speculations");
         return -1;
@@ -634,7 +635,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         SetHaveSavepoint(have_savepoint, false);
         SetNeedRollback(need_rollback, false);
       }
-      has_begun = has_begun || query == "BEGIN";
+      has_begun = has_begun || is_begin;
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);
       log_debug("Query is %s", query.c_str());

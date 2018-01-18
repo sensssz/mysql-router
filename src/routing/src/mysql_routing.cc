@@ -203,6 +203,7 @@ bool DoSpeculation(
     }
   } else {
     for (size_t i = 0; i < server_group->Size(); i++) {
+      server_group->WaitForServer(i);
       if (need_rollback[i]) {
         if (!server_group->SendQuery(i, "ROLLBACK to write_save")) {
           return false;
@@ -286,7 +287,6 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
       server_group->WaitForServer(server_for_current_query);
       packet_size = CopyToClient(server_group->GetResult(server_for_current_query), client);
     }
-    server_group->WaitForAll();
     if (!DoSpeculation(query, server_group, -1, speculator,
                        have_savepoint, need_rollback, prefetches)) {
       return -1;

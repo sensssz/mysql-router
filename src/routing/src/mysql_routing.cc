@@ -324,10 +324,6 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       SetNeedRollback(need_rollback, true);
     }
   }
-  auto query_to_send = query;
-  if (previous_is_write) {
-    query_to_send = "ROLLBACK to write_save; " + query;
-  }
   bool speculation_is_write = false;
   auto next_speculation = speculator->TrySpeculate(query, 1);
   if (next_speculation.size() > 0 && IsWrite(next_speculation[0])) {
@@ -337,11 +333,13 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   log_debug("Prediction fails");
   if (IsWrite(query)) {
     log_debug("Got write query, forward it to all servers...");
-    if (!server_group->ForwardToAll("ROLLBACK to write_save")) {
-      log_error("Failed to forward query to servers");
-      return -1;
+    if (previous_is_write) {
+      if (!server_group->ForwardToAll("ROLLBACK to write_save")) {
+        log_error("Failed to forward query to servers");
+        return -1;
+      }
+      server_group->WaitForAll();
     }
-    server_group->WaitForAll();
     log_info("Query sent to all is %s", query.c_str());
     if (!server_group->ForwardToAll(query)) {
       log_error("Failed to forward query to servers");
@@ -368,10 +366,13 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       log_error("Failed to get available server");
       return -1;
     }
-    if (!server_group->SendQuery(server, "ROLLBACK to write_save")) {
-      return -1;
+    if (previous_is_write) {
+      if (!server_group->SendQuery(server, "ROLLBACK to write_save")) {
+        log_error("Failed to send ROLLBACK to server");
+        return -1;
+      }
+      server_group->WaitForServer(server);
     }
-    server_group->WaitForServer(server);
     log_info("Query sent to %d is %s", server, query_to_send.c_str());
     if (!server_group->SendQuery(server, query_to_send)) {
       log_error("Failed to send query to server");

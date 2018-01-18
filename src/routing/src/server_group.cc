@@ -89,7 +89,7 @@ int ServerGroup::Write(uint8_t *buffer, size_t size) {
   }
 }
 
-std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index, int num_skips) {
+std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index) {
   if (has_outstanding_request_[server_index] || read_results_[server_index] <= 0) {
     return std::make_pair(nullptr, 0);
   }

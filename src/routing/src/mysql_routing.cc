@@ -158,9 +158,9 @@ void SetNeedRollback(std::vector<bool> &need_rollback, bool need) {
   }
 }
 
-void SetBytesToSkip(std::vector<long> &packets_to_skip, long bytes) {
-  for (size_t i = 0; i < packets_to_skip.size(); i++) {
-    packets_to_skip[i] = bytes;
+void SetBytesToSkip(std::vector<long> &bytes_to_skip, long bytes) {
+  for (size_t i = 0; i < bytes_to_skip.size(); i++) {
+    bytes_to_skip[i] = bytes;
   }
 }
 
@@ -173,10 +173,10 @@ bool DoSpeculation(
   Speculator *speculator,
   std::vector<bool> &have_savepoint,
   std::vector<bool> &need_rollback,
-  std::vector<long> &num_packets_to_skip,
+  std::vector<long> &speculative_bytes_to_skip,
   std::unordered_map<std::string, int> &prefetches) {
   prefetches.clear();
-  SetBytesToSkip(num_packets_to_skip, 0);
+  SetBytesToSkip(speculative_bytes_to_skip, 0);
   auto speculations = speculator->Speculate(query);
   if (speculations.size() == 0) {
     return true;
@@ -196,7 +196,7 @@ bool DoSpeculation(
         if (need_rollback[i]) {
           query_to_send = "ROLLBACK to write_save; " + speculation;
           need_rollback[i] = false;
-          num_packets_to_skip[i]++;
+          speculative_bytes_to_skip[i] += kSavepointResultBytes;
         }
         log_info("Speculative query sent to %d is %s", i, query_to_send.c_str());
         if (!server_group->SendQuery(i, query_to_send)) {
@@ -210,14 +210,14 @@ bool DoSpeculation(
   } else {
     for (size_t i = 0; i < server_group->Size(); i++) {
       query_to_send = "SAVEPOINT write_save; " + speculation;
-      num_packets_to_skip[i]++;
+      speculative_bytes_to_skip[i] += kSavepointResultBytes;
       if (need_rollback[i]) {
         query_to_send = "ROLLBACK to write_save; " + query_to_send;
-        num_packets_to_skip[i]++;
+        speculative_bytes_to_skip[i] += kSavepointResultBytes;
         need_rollback[i] = false;
       } else if (have_savepoint[i]) {
         query_to_send = "RELEASE SAVEPOINT write_save; " + query_to_send;
-        num_packets_to_skip[i]++;
+        speculative_bytes_to_skip[i] += kSavepointResultBytes;
       }
       have_savepoint[i] = true;
       log_info("Speculative query sent to %lu is %s", i, query_to_send.c_str());
@@ -231,11 +231,12 @@ bool DoSpeculation(
   return true;
 }
 
-size_t CopyToClient(ServerGroup *server_group, size_t index, size_t packets_to_skip, Connection *client) {
-  auto result = server_group->GetResult(index, packets_to_skip);
-  std::cerr << packets_to_skip << " packets to skip" << std::endl;
-  memcpy(client->Buffer(), result.first + packets_to_skip, result.second - packets_to_skip);
-  return result.second - packets_to_skip;
+size_t CopyToClient(std::pair<uint8_t*, size_t> &&result, size_t bytes_to_skip, Connection *client) {
+  memcpy(client->Buffer(), result.first + bytes_to_skip, result.second - bytes_to_skip);
+  uint8_t seq_num_to_substract = static_cast<uint8_t>(bytes_to_skip / kSavepointResultBytes);
+  client->Buffer()[kMySQLSeqOffset] -= seq_num_to_substract;
+  std::cerr << bytes_to_skip << " bytes to skip" << std::endl;
+  return result.second - bytes_to_skip;
 }
 
 bool HandleNonQuery(ServerGroup *server_group, Connection *client,
@@ -270,20 +271,20 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
                           Speculator *speculator,
                           std::vector<bool> &have_savepoint,
                           std::vector<bool> &need_rollback,
-                          std::vector<long> &num_packets_to_skip,
+                          std::vector<long> &speculative_bytes_to_skip,
                           std::unordered_map<std::string, int> &prefetches) {
   int server_for_current_query = -1;
   size_t packet_size = 0;
-  size_t packets_to_skip = num_packets_to_skip[server_index];
+  size_t bytes_to_skip = speculative_bytes_to_skip[server_index];
   log_debug("Prediction hits, check for result");
   if (server_group->IsReadyForQuery(server_index)) {
     // Result has been received
     log_debug("Result has already arrived");
-    packet_size = CopyToClient(server_group, server_index, packets_to_skip, client);
+    packet_size = CopyToClient(server_group->GetResult(server_index), bytes_to_skip, client);
   } else if (IsWrite(query)) {
     log_debug("Result is pending");
     server_group->WaitForServer(server_index);
-    packet_size = CopyToClient(server_group, server_index, packets_to_skip, client);
+    packet_size = CopyToClient(server_group->GetResult(server_index), bytes_to_skip, client);
   } else {
     log_debug("Result is pending");
     server_for_current_query = server_index;
@@ -292,18 +293,18 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
     // DoSpeculation always checks whether a server is ready for query.
     if (!DoSpeculation(query, server_group, -1, speculator,
                        have_savepoint, need_rollback,
-                       num_packets_to_skip, prefetches)) {
+                       speculative_bytes_to_skip, prefetches)) {
       return -1;
     }
   } else {
     if (!DoSpeculation(query, server_group, server_for_current_query,
                        speculator, have_savepoint, need_rollback,
-                       num_packets_to_skip, prefetches)) {
+                       speculative_bytes_to_skip, prefetches)) {
       return -1;
     }
     if (server_for_current_query != -1) {
       server_group->WaitForServer(server_for_current_query);
-      packet_size = CopyToClient(server_group, server_for_current_query, packets_to_skip, client);
+      packet_size = CopyToClient(server_group->GetResult(server_for_current_query), bytes_to_skip, client);
     }
   }
   log_debug("Send results back to client");
@@ -320,7 +321,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
                               Speculator *speculator,
                               std::vector<bool> &have_savepoint,
                               std::vector<bool> &need_rollback,
-                              std::vector<long> &num_packets_to_skip,
+                              std::vector<long> &speculative_bytes_to_skip,
                               std::unordered_map<std::string, int> &prefetches) {
   int server = -1;
   ssize_t packet_size;
@@ -331,11 +332,11 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       SetNeedRollback(need_rollback, true);
     }
   }
-  size_t packets_to_skip = 0;
+  size_t bytes_to_skip = 0;
   auto query_to_send = query;
   if (previous_is_write) {
     query_to_send = "ROLLBACK to write_save; " + query;
-    packets_to_skip++;
+    bytes_to_skip += kSavepointResultBytes;
   }
   bool speculation_is_write = false;
   auto next_speculation = speculator->TrySpeculate(query, 1);
@@ -359,9 +360,9 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       log_error("Failed to get available server");
       return -1;
     }
-    packet_size = CopyToClient(server_group, server, packets_to_skip, client);
+    packet_size = CopyToClient(server_group->GetResult(server), bytes_to_skip, client);
     if (!DoSpeculation(query, server_group, -1, speculator, have_savepoint,
-                       need_rollback, num_packets_to_skip, prefetches)) {
+                       need_rollback, speculative_bytes_to_skip, prefetches)) {
       log_error("Failed to send speculations");
       return -1;
     }
@@ -380,20 +381,20 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     need_rollback[server] = false;
     if (speculation_is_write) {
       server_group->WaitForServer(server);
-      packet_size = CopyToClient(server_group, server, packets_to_skip, client);
+      packet_size = CopyToClient(server_group->GetResult(server), bytes_to_skip, client);
       if (!DoSpeculation(query, server_group, server, speculator, have_savepoint,
-                         need_rollback, num_packets_to_skip, prefetches)) {
+                         need_rollback, speculative_bytes_to_skip, prefetches)) {
         log_error("Failed to send speculations");
         return -1;
       }
     } else {
       if (!DoSpeculation(query, server_group, server, speculator, have_savepoint,
-                         need_rollback, num_packets_to_skip, prefetches)) {
+                         need_rollback, speculative_bytes_to_skip, prefetches)) {
         log_error("Failed to send speculations");
         return -1;
       }
       server_group->WaitForServer(server);
-      packet_size = CopyToClient(server_group, server, packets_to_skip, client);
+      packet_size = CopyToClient(server_group->GetResult(server), bytes_to_skip, client);
     }
   }
   log_debug("Send results back to client");
@@ -550,7 +551,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::vector<long> write_latencies;
   std::vector<bool> have_savepoint;
   std::vector<bool> need_rollback;
-  std::vector<long> num_packets_to_skip;
+  std::vector<long> speculative_bytes_to_skip;
 
   auto server_group = destination_->GetServerGroup();
   if (server_group.get() == nullptr) {
@@ -566,7 +567,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::vector<bool> all_false(server_group->Size(), false);
   have_savepoint = all_false;
   need_rollback = all_false;
-  num_packets_to_skip = std::vector<long>(server_group->Size(), 0);
+  speculative_bytes_to_skip = std::vector<long>(server_group->Size(), 0);
 
   // int server = destination_->get_server_socket(destination_connect_timeout_, &error);
   int server = 1;
@@ -634,7 +635,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       if (is_begin) {
         SetHaveSavepoint(have_savepoint, false);
         SetNeedRollback(need_rollback, false);
-        SetBytesToSkip(num_packets_to_skip, 0);
+        SetBytesToSkip(speculative_bytes_to_skip, 0);
       }
       has_begun = has_begun || query == "BEGIN";
       speculator_->CheckBegin(query);
@@ -647,12 +648,12 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         packet_size = ::HandleSpeculationHit(server_group.get(), query, iter->second,
                                              &client_connection, speculator_.get(),
                                              have_savepoint, need_rollback,
-                                             num_packets_to_skip, prefetches);
+                                             speculative_bytes_to_skip, prefetches);
       } else {
         num_misses++;
         packet_size = ::HandleSpeculationMiss(server_group.get(), query, &client_connection,
                                               speculator_.get(), have_savepoint, need_rollback,
-                                              num_packets_to_skip, prefetches);
+                                              speculative_bytes_to_skip, prefetches);
       }
       if (packet_size < 0) {
         break;

@@ -18,7 +18,7 @@ public:
   }
   int Read(uint8_t *buffer, size_t size);
   int Write(uint8_t *buffer, size_t size);
-  std::pair<uint8_t*, size_t> GetResult(size_t server_index, int num_skips=0);
+  std::pair<uint8_t*, size_t> GetResult(size_t server_index);
 
   bool SendQuery(size_t server_index, const std::string &query);
   bool Propagate(const std::string &query);

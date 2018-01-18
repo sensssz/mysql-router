@@ -186,12 +186,14 @@ bool DoSpeculation(
         }
         if (need_rollback[i]) {
           if (!server_group->SendQuery(i, "ROLLBACK to write_save")) {
+            log_error("Failed to send rollback to server %lu", i);
             return false;
           }
           server_group->WaitForServer(i);
           need_rollback[i] = false;
         }
         if (!server_group->SendQuery(i, speculation)) {
+            log_error("Failed to send speculation to server %lu", i);
           return false;
         }
         prefetches[speculation] = index;
@@ -202,28 +204,28 @@ bool DoSpeculation(
   } else {
     for (size_t i = 0; i < server_group->Size(); i++) {
       if (need_rollback[i]) {
-        if (!server_group->SendQuery(i, "ROLLBACK to write_save; SAVEPOINT write_save;")) {
+        if (!server_group->SendQuery(i, "ROLLBACK to write_save")) {
           return false;
         }
         server_group->WaitForServer(i);
         need_rollback[i] = false;
       } else if (have_savepoint[i]) {
-        if (!server_group->SendQuery(i, "RELEASE SAVEPOINT write_save; SAVEPOINT write_save;")) {
+        if (!server_group->SendQuery(i, "RELEASE SAVEPOINT write_save")) {
           return false;
         }
-      } else {
-        if (!server_group->SendQuery(i, "SAVEPOINT write_save;")) {
-          return false;
-        }
+        server_group->WaitForServer(i);
       }
-      have_savepoint[i] = true;
     }
 
-    for (size_t i = 0; i < server_group->Size(); i++) {
-      server_group->WaitForServer(i);
-      if (!server_group->SendQuery(i, speculation)) {
-        return false;
-      }
+    if (!server_group->ForwardToAll("SAVEPOINT write_save")) {
+      log_error("Failed to send savepoints to all servers");
+      return false;
+    }
+    server_group->WaitForAll();
+    SetHaveSavepoint(have_savepoint, true);
+    if (!server_group->ForwardToAll(speculation)) {
+      log_error("Failed to send speculation to all servers");
+      return false;
     }
     prefetches[speculation] = 0;
   }
@@ -275,16 +277,16 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
     // Result has been received
     log_debug("Result has already arrived");
     packet_size = CopyToClient(server_group->GetResult(server_index), client);
-  } else if (IsWrite(query)) {
-    log_debug("Result is pending");
-    server_group->WaitForServer(server_index);
-    packet_size = CopyToClient(server_group->GetResult(server_index), client);
-  } else {
+  } {
     log_debug("Result is pending");
     server_for_current_query = server_index;
   }
   if (IsWrite(query)) {
-    // DoSpeculation always checks whether a server is ready for query.
+    if (server_for_current_query != -1) {
+      server_group->WaitForServer(server_for_current_query);
+      packet_size = CopyToClient(server_group->GetResult(server_for_current_query), client);
+    }
+    server_group->WaitForAll();
     if (!DoSpeculation(query, server_group, -1, speculator,
                        have_savepoint, need_rollback, prefetches)) {
       return -1;
@@ -340,7 +342,6 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       }
       server_group->WaitForAll();
     }
-    log_info("Query sent to all is %s", query.c_str());
     if (!server_group->ForwardToAll(query)) {
       log_error("Failed to forward query to servers");
       return -1;
@@ -373,7 +374,6 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       }
       server_group->WaitForServer(server);
     }
-    log_info("Query sent to %d is %s", server, query.c_str());
     if (!server_group->SendQuery(server, query)) {
       log_error("Failed to send query to server");
       return -1;

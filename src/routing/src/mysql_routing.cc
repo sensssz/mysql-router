@@ -205,24 +205,26 @@ bool DoSpeculation(
     for (size_t i = 0; i < server_group->Size(); i++) {
       server_group->WaitForServer(i);
       if (need_rollback[i]) {
-        if (!server_group->SendQuery(i, "ROLLBACK to write_save")) {
+        if (!server_group->SendQuery(i, "ROLLBACK to write_save; SAVEPOINT write_save;")) {
           return false;
         }
-        server_group->WaitForServer(i);
         need_rollback[i] = false;
       } else if (have_savepoint[i]) {
-        if (!server_group->SendQuery(i, "RELEASE SAVEPOINT write_save")) {
+        if (!server_group->SendQuery(i, "RELEASE SAVEPOINT write_save; SAVEPOINT write_save")) {
           return false;
         }
-        server_group->WaitForServer(i);
+      } else {
+        if (!server_group->SendQuery(i, "SAVEPOINT write_save")) {
+          return false;
+        }
       }
     }
-
-    if (!server_group->ForwardToAll("SAVEPOINT write_save")) {
-      log_error("Failed to send savepoints to all servers");
-      return false;
-    }
     server_group->WaitForAll();
+    // if (!server_group->ForwardToAll("SAVEPOINT write_save")) {
+    //   log_error("Failed to send savepoints to all servers");
+    //   return false;
+    // }
+    // server_group->WaitForAll();
     SetHaveSavepoint(have_savepoint, true);
     if (!server_group->ForwardToAll(speculation)) {
       log_error("Failed to send speculation to all servers");

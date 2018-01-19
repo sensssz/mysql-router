@@ -54,21 +54,11 @@ def calc_stats(ori_latencies, sqp_latencies, query_count, aggregate_name, aggreg
                                             sqp_latency_stat, overall_speedup)
 
 
-def calc_plain_stats(ori_latencies, sqp_latencies, aggregate_name, aggregator):
-  ''' Calculate stats about original latency and SQP latency
+def calc_stats_for_query_types(tag):
+  ''' Calculate stats about each query type
   '''
-  ori_latency_stat = aggregator(ori_latencies)
-  sqp_latency_stat = aggregator(sqp_latencies)
-  overall_speedup = ori_latency_stat / sqp_latency_stat
-  print '%s, %f, %f, %f' % (aggregate_name, ori_latency_stat,
-                            sqp_latency_stat, overall_speedup)
-
-
-def main(tag):
-  ''' Main function
-  '''
-  ori_latencies, query_count = load_latencies('query_process_' + tag + '_ori')
-  sqp_latencies, query_count = load_latencies('query_process_' + tag + '_sqp')
+  ori_latencies, query_count = load_latencies('latencies/query_process_' + tag + '_ori')
+  sqp_latencies, query_count = load_latencies('latencies/query_process_' + tag + '_sqp')
   print 'Stat, Query Type, Proportion (%), Original (us), SQP (us), Speedup of Speculation (x)'
   calc_stats(ori_latencies, sqp_latencies, query_count, 'Average', np.mean)
   calc_stats(ori_latencies, sqp_latencies, query_count, 'Median', np.median)
@@ -77,13 +67,41 @@ def main(tag):
   calc_stats(ori_latencies, sqp_latencies, query_count,
              '99th Percentile', lambda x: np.percentile(x, 99))
 
-  ori_latencies = load_plain_latencies('read_latencies_' + tag + '_ori')
-  sqp_latencies = load_plain_latencies('read_latencies_' + tag + '_sqp')
+
+def calc_plain_stats(query_type, ori_latencies, sqp_latencies, aggregate_name, aggregator):
+  ''' Calculate stats about original latency and SQP latency
+  '''
+  ori_latency_stat = aggregator(ori_latencies)
+  sqp_latency_stat = aggregator(sqp_latencies)
+  overall_speedup = ori_latency_stat / sqp_latency_stat
+  print '%s, %s, %f, %f, %f' % (query_type, aggregate_name, ori_latency_stat,
+                                sqp_latency_stat, overall_speedup)
+
+
+def calc_stats_for_type(query_type, tag):
+  ''' Calculate stats about one query type
+  '''
+  ori_latencies = load_plain_latencies('latencies/' + query_type + '_latencies_' + tag + '_ori')
+  sqp_latencies = load_plain_latencies('latencies/' + query_type + '_latencies_' + tag + '_sqp')
+  calc_plain_stats(query_type, ori_latencies, sqp_latencies, 'Average', np.mean)
+  calc_plain_stats(query_type, ori_latencies, sqp_latencies, 'Median', np.median)
+  calc_plain_stats(query_type, ori_latencies, sqp_latencies, '95th Percentile', lambda x: np.percentile(x, 95))
+  calc_plain_stats(query_type, ori_latencies, sqp_latencies, '99th Percentile', lambda x: np.percentile(x, 99))
+
+
+def calc_stats_for_read_write(tag):
+  ''' Calculate stats about reads and writes
+  '''
   print 'Stat, Original (us), SQP (us), Speedup of Speculation (x)'
-  calc_plain_stats(ori_latencies, sqp_latencies, 'Average', np.mean)
-  calc_plain_stats(ori_latencies, sqp_latencies, 'Median', np.median)
-  calc_plain_stats(ori_latencies, sqp_latencies, '95th Percentile', lambda x: np.percentile(x, 95))
-  calc_plain_stats(ori_latencies, sqp_latencies, '99th Percentile', lambda x: np.percentile(x, 99))
+  calc_stats_for_type('read', tag)
+  calc_stats_for_type('write', tag)
+
+
+def main(tag):
+  ''' Main function
+  '''
+  calc_stats_for_query_types(tag)
+  calc_stats_for_read_write(tag)
 
 if __name__ == '__main__':
   if len(sys.argv) != 2:

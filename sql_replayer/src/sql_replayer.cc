@@ -238,8 +238,8 @@ void Replay(int ID, const std::string &server,
       if (is_begin) {
         trx_start = Now();
       }
+      auto start = Now();
       try {
-        auto start = Now();
         bool is_select = stmt->execute(NumberedQuery(i, query.first));
         if (!is_begin) {
           query_latencies.push_back(GetDuration(start));
@@ -248,6 +248,9 @@ void Replay(int ID, const std::string &server,
           delete stmt->getResultSet();
         }
       } catch (sql::SQLException &e) {
+        if (!is_begin) {
+          query_latencies.push_back(GetDuration(start));
+        }
         std::cout << "\n# ERR: " << e.what();
         std::cout << " (MySQL error code: " << e.getErrorCode();
         std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
@@ -404,6 +407,26 @@ int main(int argc, char *argv[]) {
   int num_clients = atoi(argv[3]);
   std::string workload_file(argv[4]);
   std::string postfix(argv[5]);
+
+  // auto conn = std::move(::ConnectToDb(server, database));
+  // if (conn.get() == nullptr) {
+  //   exit(EXIT_FAILURE);
+  // }
+  // std::unique_ptr<sql::Statement> stmt(conn->createStatement());
+  // std::string line;
+  // while (true) {
+  //   std::getline(std::cin, line);
+  //   if (line.find("quit") == 0) {
+  //     break;
+  //   }
+  //   stmt->execute(line);
+  //   while (stmt->getMoreResults()) {
+  //     std::unique_ptr<sql::ResultSet> res(stmt->getResultSet());
+  //   }
+  // }
+
+  // return 1;
+
   std::vector<int> query_ids;
   auto trace = ::LoadWorkloadTrace(workload_file, query_ids);
   std::set<size_t> wait_queries = LoadWaitQueries("wait_queries");

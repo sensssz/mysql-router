@@ -175,6 +175,7 @@ bool DoSpeculation(
   }
   bool done = false;
   auto speculation = speculations[0];
+  auto query_to_send = query;
   done = false;
   if (IsRead(speculation)) {
     while (!done) {
@@ -185,14 +186,10 @@ bool DoSpeculation(
           continue;
         }
         if (need_rollback[i]) {
-          if (!server_group->SendQuery(i, "ROLLBACK to write_save")) {
-            log_error("Failed to send rollback to server %lu", i);
-            return false;
-          }
-          server_group->WaitForServer(i);
+          query_to_send = "ROLLBACK to write_save; " + query;
           need_rollback[i] = false;
         }
-        if (!server_group->SendQuery(i, speculation)) {
+        if (!server_group->SendQuery(i, query_to_send)) {
             log_error("Failed to send speculation to server %lu", i);
           return false;
         }
@@ -205,31 +202,20 @@ bool DoSpeculation(
     for (size_t i = 0; i < server_group->Size(); i++) {
       server_group->WaitForServer(i);
       if (need_rollback[i]) {
-        if (!server_group->SendQuery(i, "ROLLBACK to write_save; SAVEPOINT write_save;")) {
-          return false;
-        }
+        query_to_send = "ROLLBACK to write_save; SAVEPOINT write_save; " + query;
         need_rollback[i] = false;
       } else if (have_savepoint[i]) {
-        if (!server_group->SendQuery(i, "RELEASE SAVEPOINT write_save; SAVEPOINT write_save")) {
-          return false;
-        }
+        query_to_send = "RELEASE SAVEPOINT write_save; SAVEPOINT write_save; " + query;
       } else {
-        if (!server_group->SendQuery(i, "SAVEPOINT write_save")) {
-          return false;
-        }
+        query_to_send = "SAVEPOINT write_save; " + query;
+      }
+      if (!server_group->SendQuery(query_to_send)) {
+        log_error("Failed to send write speculation to server %lu", i);
+        return false;
       }
     }
     server_group->WaitForAll();
-    // if (!server_group->ForwardToAll("SAVEPOINT write_save")) {
-    //   log_error("Failed to send savepoints to all servers");
-    //   return false;
-    // }
-    // server_group->WaitForAll();
     SetHaveSavepoint(have_savepoint, true);
-    if (!server_group->ForwardToAll(speculation)) {
-      log_error("Failed to send speculation to all servers");
-      return false;
-    }
     prefetches[speculation] = 0;
   }
   return true;
@@ -322,11 +308,13 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   int server = -1;
   ssize_t packet_size;
   bool previous_is_write = false;
+  auto query_to_send = query;
   SetNeedRollback(need_rollback, false);
   for (auto &speculation : prefetches) {
     if (IsWrite(speculation.first)) {
       previous_is_write = true;
       SetNeedRollback(need_rollback, true);
+      query_to_send = "ROLLBACK TO write_save; " + query;
     }
   }
   bool speculation_is_write = false;
@@ -338,16 +326,12 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   log_debug("Prediction fails");
   if (IsWrite(query)) {
     log_debug("Got write query, forward it to all servers...");
+    server_group->WaitForAll();
     if (previous_is_write) {
-      server_group->WaitForAll();
-      if (!server_group->ForwardToAll("ROLLBACK to write_save")) {
-        log_error("Failed to forward query to servers");
-        return -1;
-      }
-      server_group->WaitForAll();
+      SetNeedRollback(need_rollback, false);
       SetHaveSavepoint(have_savepoint, false);
     }
-    if (!server_group->ForwardToAll(query)) {
+    if (!server_group->ForwardToAll(query_to_send)) {
       log_error("Failed to forward query to servers");
       return -1;
     }
@@ -372,11 +356,6 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       return -1;
     }
     if (previous_is_write) {
-      if (!server_group->SendQuery(server, "ROLLBACK to write_save")) {
-        log_error("Failed to send ROLLBACK to server");
-        return -1;
-      }
-      server_group->WaitForServer(server);
       need_rollback[server] = false;
       have_savepoint[server] = false;
     }

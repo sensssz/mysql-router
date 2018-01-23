@@ -64,6 +64,10 @@ ssize_t RdmaClient::SendToServer(void *buffer, size_t size) {
   if (!s.ok()) {
     return -1;
   }
+  if (size == 0) {
+    context_->num_skips++;
+    return 0;
+  }
   *(reinterpret_cast<size_t *>(context_->send_region)) = size;
   memcpy(context_->send_region + sizeof(size), buffer, size);
   s = PostSend(context_, size + sizeof(size));

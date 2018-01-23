@@ -28,7 +28,6 @@ public:
   ssize_t TryRecv();
   ssize_t Send(size_t size);
   ssize_t Send(uint8_t *buffer, size_t size);
-  bool SendQuery(const std::string &query);
 
 private:
   int fd_;

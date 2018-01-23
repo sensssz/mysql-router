@@ -32,6 +32,8 @@ public:
 
   SpscRingBuffer buffer;
 
+  int num_skips;
+
   std::thread cq_poller_thread;
 };
 

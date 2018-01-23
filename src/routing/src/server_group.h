@@ -20,6 +20,7 @@ public:
   int Write(uint8_t *buffer, size_t size);
   std::pair<uint8_t*, size_t> GetResult(size_t server_index);
 
+  int CountQueries(const std::string &query);
   bool SendQuery(size_t server_index, const std::string &query);
   bool Propagate(const std::string &query);
   bool Propagate(const std::string &query, size_t source_write_server);

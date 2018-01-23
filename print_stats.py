@@ -46,7 +46,7 @@ def calc_stats(ori_latencies, sqp_latencies, query_count, aggregate_name, aggreg
     speedup = ori_stat / sqp_stat
     propotion = 100.0 * len(ori_query_latencies) / query_count
     print '%s, %d, %f, %f, %f, %f' % (aggregate_name, query_id, propotion,
-                                      sqp_stat, ori_stat, speedup)
+                                      ori_stat, sqp_stat, speedup)
   ori_latency_stat = aggregator(ori_latencies_all)
   sqp_latency_stat = aggregator(sqp_latencies_all)
   overall_speedup = ori_latency_stat / sqp_latency_stat
@@ -92,7 +92,7 @@ def calc_stats_for_type(query_type, tag):
 def calc_stats_for_read_write(tag):
   ''' Calculate stats about reads and writes
   '''
-  print 'Stat, Original (us), SQP (us), Speedup of Speculation (x)'
+  print 'Query Type, Stat, Original (us), SQP (us), Speedup of Speculation (x)'
   calc_stats_for_type('read', tag)
   calc_stats_for_type('write', tag)
 

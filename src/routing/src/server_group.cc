@@ -97,7 +97,24 @@ std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index) {
                         static_cast<size_t>(read_results_[server_index]));
 }
 
+int ServerGroup::CountQueries(const std::string &query) {
+  int num_queries = 0;
+  for (auto c : queries) {
+    if (c == ';') {
+      num_queries++;
+    }
+  }
+  if (queries[queries.length() - 1] != ';') {
+    num_queries++;
+  }
+  return num_queries;
+}
+
 bool ServerGroup::SendQuery(size_t server_index, const std::string &query) {
+  int num_queries = CountQueries(query);
+  for (int i = 0; i < num_queries - 1; i++) {
+    server_conns_[server_index].Send(0);
+  }
   size_t payload_size = 1 + query.length();
   size_t packet_size = kMySQLHeaderLen + payload_size;
   uint8_t *buffer = server_conns_[server_index].Buffer();

@@ -139,7 +139,11 @@ void RdmaCommunicator::OnWorkCompletion(Context *context, struct ibv_wc *wc) {
       PostReceive(context);
     }
     // ShowBinaryData(context->recv_region + sizeof(size_t), size);
-    context->buffer.Write(context->recv_region + sizeof(size_t), size);
+    if (context->num_skips > 0) {
+      context->num_skips--;
+    } else {
+      context->buffer.Write(context->recv_region + sizeof(size_t), size);
+    }
   }
 }
 
@@ -230,6 +234,7 @@ Status RdmaCommunicator::InitContext(Context *context, struct rdma_cm_id *id) {
   RETURN_IF_ERROR(RegisterMemoryRegion(context));
   context->queue_depth = kQueueDepth;
   context->unsignaled_sends = 0;
+  context->num_skips = 0;
   return Status::Ok();
 }
 

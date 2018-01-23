@@ -134,7 +134,7 @@ std::set<size_t> LoadWaitQueries(const std::string &filename) {
 
 std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server, const std::string &database) {
   auto driver = sql::mysql::get_mysql_driver_instance();
-  std::string url = server + ":4243";
+  std::string url = server + ":4242";
   std::cout << "Connecting to database..." << std::endl;
   sql::Connection *conn = nullptr;
   auto attempts = 0;
@@ -142,7 +142,7 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server, const st
     try {
       sql::ConnectOptionsMap connection_properties;
       connection_properties["hostName"] = server;
-      connection_properties["port"] = 4243;
+      connection_properties["port"] = 4242;
       connection_properties["userName"] = "root";
       connection_properties["password"] = "";
       connection_properties["schema"] = database;

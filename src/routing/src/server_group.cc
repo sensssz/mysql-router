@@ -99,12 +99,12 @@ std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index) {
 
 int ServerGroup::CountQueries(const std::string &query) {
   int num_queries = 0;
-  for (auto c : queries) {
+  for (auto c : query) {
     if (c == ';') {
       num_queries++;
     }
   }
-  if (queries[queries.length() - 1] != ';') {
+  if (query[query.length() - 1] != ';') {
     num_queries++;
   }
   return num_queries;

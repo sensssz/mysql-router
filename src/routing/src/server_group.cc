@@ -126,7 +126,7 @@ bool ServerGroup::SendQuery(size_t server_index, const std::string &query) {
   memcpy(payload, query.c_str(), query.length());
   payload[query.length()] = 0;
   has_outstanding_request_[server_index] = true;
-  return server_conns_[server_index].Send(packet_size + 1) > 0;
+  return server_conns_[server_index].Send(packet_size) > 0;
 }
 
 bool ServerGroup::Propagate(const std::string &query) {

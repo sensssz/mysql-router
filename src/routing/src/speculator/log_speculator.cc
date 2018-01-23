@@ -39,6 +39,7 @@ std::vector<std::string> LogSpeculator::TrySpeculate(const std::string &query, i
   if (!start_ || current_query_ == -1) {
     return speculations_;
   }
+  has_speculation_ = true;
   int rand_num = dist_(rand_gen_);
   if (rand_num <= 58) {
     auto &next_query = queries_[current_query_ + 1];

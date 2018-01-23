@@ -209,7 +209,7 @@ bool DoSpeculation(
       } else {
         query_to_send = "SAVEPOINT write_save; " + query;
       }
-      if (!server_group->SendQuery(query_to_send)) {
+      if (!server_group->SendQuery(i, query_to_send)) {
         log_error("Failed to send write speculation to server %lu", i);
         return false;
       }

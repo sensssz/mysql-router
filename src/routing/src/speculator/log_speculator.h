@@ -31,6 +31,8 @@ private:
   std::vector<std::string> queries_;
   bool start_;
   int current_query_;
+  bool has_speculation_;
+  std::vector<std::string> speculations_;
   std::default_random_engine rand_gen_;
   std::uniform_int_distribution<int> dist_;
   std::default_random_engine rand_index_;

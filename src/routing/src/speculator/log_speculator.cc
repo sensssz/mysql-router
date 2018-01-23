@@ -3,7 +3,8 @@
 
 #include <fstream>
 
-LogSpeculator::LogSpeculator(const std::string &filename) : start_(false), current_query_(0), dist_(1, 100) {
+LogSpeculator::LogSpeculator(const std::string &filename) :
+    start_(false), has_speculation_(false), current_query_(0), dist_(1, 100) {
   std::ifstream infile(filename);
   if (infile.fail()) {
     return;
@@ -25,14 +26,18 @@ void LogSpeculator::CheckBegin(const std::string &query) {
 std::vector<std::string> LogSpeculator::Speculate(const std::string &query, int num_speculations) {
   auto speculations = TrySpeculate(query, num_speculations);
   current_query_++;
+  has_speculation_ = false;
+  speculations_.clear();
   return std::move(speculations);
 }
 
 std::vector<std::string> LogSpeculator::TrySpeculate(const std::string &query, int num_speculations) {
-  std::vector<std::string> speculations;
-  // return std::move(speculations);
+  if (has_speculation_) {
+    return speculations_;
+  }
+  // return speculations_;
   if (!start_ || current_query_ == -1) {
-    return speculations;
+    return speculations_;
   }
   int rand_num = dist_(rand_gen_);
   if (rand_num <= 58) {
@@ -40,7 +45,7 @@ std::vector<std::string> LogSpeculator::TrySpeculate(const std::string &query, i
     if (next_query.find("BEGIN") == std::string::npos &&
         next_query.find("COMMIT") == std::string::npos) {
       log_debug("Will make prediction hit with %s", next_query.c_str());
-      speculations.push_back(next_query);
+      speculations_.push_back(next_query);
     } else {
       log_debug("Cannot predict BEGIN or COMMIT");
     }
@@ -51,10 +56,10 @@ std::vector<std::string> LogSpeculator::TrySpeculate(const std::string &query, i
     if (query == "BEGIN" || query == "COMMIT") {
       continue;
     }
-    speculations.push_back(query);
+    speculations_.push_back(query);
     num_speculations--;
   }
 
-  return std::move(speculations);
+  return speculations_;
 
 }

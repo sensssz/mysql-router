@@ -214,7 +214,6 @@ bool DoSpeculation(
         return false;
       }
     }
-    server_group->WaitForAll();
     SetHaveSavepoint(have_savepoint, true);
     prefetches[speculation] = 0;
   }

@@ -340,7 +340,6 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   // Prediction not hit, send it now.
   log_debug("Prediction fails");
   if (IsWrite(query)) {
-    log_debug("Got write query, forward it to all servers...");
     server_group->WaitForAll();
     if (previous_is_write) {
       SetNeedRollback(need_rollback, false);
@@ -366,7 +365,6 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     }
   } else {
     server = server_group->GetAvailableServer();
-    log_debug("Got read query, execute it on server %d", server);
     if (server < 0) {
       log_error("Failed to get available server");
       return -1;
@@ -375,7 +373,8 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       need_rollback[server] = false;
       have_savepoint[server] = false;
     }
-    if (!server_group->SendQuery(server, query, num_queries)) {
+    log_debug("Sending query %s to server %d", query_to_send.c_str(), server);
+    if (!server_group->SendQuery(server, query_to_send, num_queries)) {
       log_error("Failed to send query to server");
       return -1;
     }

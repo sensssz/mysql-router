@@ -185,12 +185,14 @@ bool DoSpeculation(
             !server_group->IsReadyForQuery(i)) {
           continue;
         }
+        int num_queries = 1;
         if (need_rollback[i]) {
           query_to_send = "ROLLBACK to write_save; " + speculation;
           need_rollback[i] = false;
+          num_queries = 2;
         }
         log_debug("Sending speculation %s to server %d", query_to_send.c_str(), i);
-        if (!server_group->SendQuery(i, query_to_send)) {
+        if (!server_group->SendQuery(i, query_to_send, num_queries)) {
             log_error("Failed to send speculation to server %lu", i);
           return false;
         }
@@ -201,17 +203,21 @@ bool DoSpeculation(
     }
   } else {
     for (size_t i = 0; i < server_group->Size(); i++) {
+      int num_queries = 0;
       server_group->WaitForServer(i);
       if (need_rollback[i]) {
         query_to_send = "ROLLBACK to write_save; SAVEPOINT write_save; " + speculation;
         need_rollback[i] = false;
+        num_queries = 3;
       } else if (have_savepoint[i]) {
         query_to_send = "RELEASE SAVEPOINT write_save; SAVEPOINT write_save; " + speculation;
+        num_queries = 3;
       } else {
         query_to_send = "SAVEPOINT write_save; " + speculation;
+        num_queries = 2;
       }
       log_debug("Sending speculation %s to server %d", query_to_send.c_str(), i);
-      if (!server_group->SendQuery(i, query_to_send)) {
+      if (!server_group->SendQuery(i, query_to_send, num_queries)) {
         log_error("Failed to send write speculation to server %lu", i);
         return false;
       }
@@ -315,12 +321,15 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
   ssize_t packet_size;
   bool previous_is_write = false;
   auto query_to_send = query;
+  int num_queries = 1;
   SetNeedRollback(need_rollback, false);
   for (auto &speculation : prefetches) {
     if (IsWrite(speculation.first)) {
       previous_is_write = true;
       SetNeedRollback(need_rollback, true);
       query_to_send = "ROLLBACK TO write_save; " + query;
+      num_queries = 2;
+      break;
     }
   }
   bool speculation_is_write = false;
@@ -338,7 +347,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       SetHaveSavepoint(have_savepoint, false);
     }
     log_debug("Sending query %s to all servers", query_to_send.c_str());
-    if (!server_group->ForwardToAll(query_to_send)) {
+    if (!server_group->ForwardToAll(query_to_send, num_queries)) {
       log_error("Failed to forward query to servers");
       return -1;
     }
@@ -366,7 +375,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       need_rollback[server] = false;
       have_savepoint[server] = false;
     }
-    if (!server_group->SendQuery(server, query)) {
+    if (!server_group->SendQuery(server, query, num_queries)) {
       log_error("Failed to send query to server");
       return -1;
     }

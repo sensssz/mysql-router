@@ -20,14 +20,12 @@ public:
   int Write(uint8_t *buffer, size_t size);
   std::pair<uint8_t*, size_t> GetResult(size_t server_index);
 
-  int CountQueries(const std::string &query);
-  bool SendQuery(size_t server_index, const std::string &query);
-  bool Propagate(const std::string &query);
-  bool Propagate(const std::string &query, size_t source_write_server);
+  bool SendQuery(size_t server_index, const std::string &query, int num_queries=1);
+  bool Propagate(const std::string &query, size_t source_write_server, int num_queries);
   bool IsReadyForQuery(size_t server_index);
   void WaitForServer(size_t server_index);
   void WaitForAll();
-  bool ForwardToAll(const std::string &query);
+  bool ForwardToAll(const std::string &query, int num_queries=1);
   int GetAvailableServer();
   bool IsExitPacket(uint8_t *buffer, size_t size);
 

@@ -97,21 +97,7 @@ std::pair<uint8_t*, size_t> ServerGroup::GetResult(size_t server_index) {
                         static_cast<size_t>(read_results_[server_index]));
 }
 
-int ServerGroup::CountQueries(const std::string &query) {
-  int num_queries = 0;
-  for (auto c : query) {
-    if (c == ';') {
-      num_queries++;
-    }
-  }
-  if (query[query.length() - 1] != ';') {
-    num_queries++;
-  }
-  return num_queries;
-}
-
-bool ServerGroup::SendQuery(size_t server_index, const std::string &query) {
-  int num_queries = CountQueries(query);
+bool ServerGroup::SendQuery(size_t server_index, const std::string &query, int num_queries) {
   for (int i = 0; i < num_queries - 1; i++) {
     server_conns_[server_index].Send(0);
   }
@@ -129,18 +115,14 @@ bool ServerGroup::SendQuery(size_t server_index, const std::string &query) {
   return server_conns_[server_index].Send(packet_size) > 0;
 }
 
-bool ServerGroup::Propagate(const std::string &query) {
-  return Propagate(query, server_conns_.size());
-}
-
-bool ServerGroup::Propagate(const std::string &query, size_t source_write_server) {
+bool ServerGroup::Propagate(const std::string &query, size_t source_write_server, int num_queries) {
   bool error = false;
   for (size_t i = 0; i < server_conns_.size(); i++) {
     if (i == source_write_server) {
       continue;
     }
     WaitForServer(i);
-    if (!SendQuery(i, query)) {
+    if (!SendQuery(i, query, num_queries)) {
       error = true;
     } else {
       has_outstanding_request_[i] = true;
@@ -163,8 +145,8 @@ bool ServerGroup::IsReadyForQuery(size_t server_index) {
   }
 }
 
-bool ServerGroup::ForwardToAll(const std::string &query) {
-  return Propagate(query, server_conns_.size());
+bool ServerGroup::ForwardToAll(const std::string &query, int num_queries) {
+  return Propagate(query, server_conns_.size(), num_queries);
 }
 
 int ServerGroup::GetAvailableServer() {

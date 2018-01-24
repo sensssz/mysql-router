@@ -217,6 +217,7 @@ bool DoSpeculation(
     SetHaveSavepoint(have_savepoint, true);
     prefetches[speculation] = 0;
   }
+  log_debug("Speculation sent");
   return true;
 }
 
@@ -271,20 +272,24 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
   }
   if (IsWrite(query)) {
     if (server_for_current_query != -1) {
+      log_debug("Waiting for result");
       server_group->WaitForServer(server_for_current_query);
       packet_size = CopyToClient(server_group->GetResult(server_for_current_query), client);
     }
+    log_debug("Sending speculations");
     if (!DoSpeculation(query, server_group, -1, speculator,
                        have_savepoint, need_rollback, prefetches)) {
       return -1;
     }
   } else {
+    log_debug("Sending speculations");
     if (!DoSpeculation(query, server_group, server_for_current_query,
                        speculator, have_savepoint,
                        need_rollback, prefetches)) {
       return -1;
     }
     if (server_for_current_query != -1) {
+      log_debug("Waiting for result");
       server_group->WaitForServer(server_for_current_query);
       packet_size = CopyToClient(server_group->GetResult(server_for_current_query), client);
     }
@@ -364,21 +369,26 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       return -1;
     }
     if (speculation_is_write) {
+      log_debug("Waiting for result before speculation because the speculation is write");
       server_group->WaitForServer(server);
       packet_size = CopyToClient(server_group->GetResult(server), client);
+      log_debug("Got result, doing speculation");
       if (!DoSpeculation(query, server_group, -1, speculator, have_savepoint,
                          need_rollback, prefetches)) {
         log_error("Failed to send speculations");
         return -1;
       }
     } else {
+      log_debug("Doing speculation before waiting for results");
       if (!DoSpeculation(query, server_group, server, speculator, have_savepoint,
                          need_rollback, prefetches)) {
         log_error("Failed to send speculations");
         return -1;
       }
+      log_debug("Waiting for results");
       server_group->WaitForServer(server);
       packet_size = CopyToClient(server_group->GetResult(server), client);
+      log_debug("Got results");
     }
   }
   log_debug("Send results back to client");

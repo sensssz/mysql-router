@@ -189,7 +189,7 @@ bool DoSpeculation(
           query_to_send = "ROLLBACK to write_save; " + speculation;
           need_rollback[i] = false;
         }
-        log_debug("Sending speculation %s to server %d", query_to_send, i);
+        log_debug("Sending speculation %s to server %d", query_to_send.c_str(), i);
         if (!server_group->SendQuery(i, query_to_send)) {
             log_error("Failed to send speculation to server %lu", i);
           return false;
@@ -210,7 +210,7 @@ bool DoSpeculation(
       } else {
         query_to_send = "SAVEPOINT write_save; " + speculation;
       }
-      log_debug("Sending speculation %s to server %d", query_to_send, i);
+      log_debug("Sending speculation %s to server %d", query_to_send.c_str(), i);
       if (!server_group->SendQuery(i, query_to_send)) {
         log_error("Failed to send write speculation to server %lu", i);
         return false;

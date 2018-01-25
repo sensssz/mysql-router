@@ -541,8 +541,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   ssize_t bytes_up = 0;
   ssize_t bytes_read = 0;
   string extra_msg = "";
-  RoutingProtocolBuffer buffer(net_buffer_length_);
-  auto buffer_length = buffer.size();
   bool handshake_done = false;
   Connection client_connection(client, routing::SocketOperations::instance());
   std::unordered_map<std::string, int> prefetches;
@@ -615,7 +613,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   ++info_active_routes_;
   ++info_handled_routes_;
 
-  int pktnr = 0;
   while (true) {
     log_debug("Reading packet from the client...");
     bytes_read = client_connection.Recv();

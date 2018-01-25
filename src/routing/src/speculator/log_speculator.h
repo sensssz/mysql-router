@@ -33,7 +33,8 @@ private:
   int current_query_;
   bool has_speculation_;
   std::vector<std::string> speculations_;
-  std::default_random_engine rand_gen_;
+  std::random_device rd_;
+  std::mt19937 rand_gen_;
   std::uniform_int_distribution<int> dist_;
   std::default_random_engine rand_index_;
   std::uniform_int_distribution<int> index_dist_;

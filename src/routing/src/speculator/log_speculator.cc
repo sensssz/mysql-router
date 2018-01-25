@@ -4,7 +4,8 @@
 #include <fstream>
 
 LogSpeculator::LogSpeculator(const std::string &filename) :
-    start_(false), has_speculation_(false), rand_gen_(rd_()), current_query_(0), dist_(1, 100) {
+    start_(false), current_query_(0), has_speculation_(false),
+    rand_gen_(rd_()), dist_(1, 100), rand_index_(rd_()) {
   std::ifstream infile(filename);
   if (infile.fail()) {
     return;

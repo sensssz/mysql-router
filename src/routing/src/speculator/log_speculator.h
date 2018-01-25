@@ -36,7 +36,7 @@ private:
   std::random_device rd_;
   std::mt19937 rand_gen_;
   std::uniform_int_distribution<int> dist_;
-  std::default_random_engine rand_index_;
+  std::mt19937 rand_index_;
   std::uniform_int_distribution<int> index_dist_;
 
   int ExtractKeyValue(const std::string &query);

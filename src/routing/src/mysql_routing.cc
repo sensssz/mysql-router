@@ -132,7 +132,7 @@ void ExtractQuery(
   if (isdigit(query_buffer[0])) {
     query_index = ExtractQueryIndex(query);
     query_id = ExtractQueryId(query);
-    query += kNumIndexDigits + kNumIdDigits;
+    query_buffer += kNumIndexDigits + kNumIdDigits;
     query_size -= kNumIndexDigits + kNumIdDigits;
   }
   query = std::string(query_buffer, query_size);

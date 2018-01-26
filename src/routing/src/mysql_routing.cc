@@ -88,14 +88,15 @@ int kListenQueueSize = 1024;
 const char *kDefaultReplicaSetName = "default";
 const int kAcceptorStopPollInterval_ms = 1000;
 const int kNumIndexDigits = 10;
+const int kNumIdDigits = 10;
 const size_t kSavepointResultBytes = 11;
 
 uint8_t kOkPacket[] = {7, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0};
 
-void DumpLatency(std::vector<long> &latencies, const std::string &latency_name) {
+void DumpLatency(std::vector<std::pair<int, long>> &latencies, const std::string &latency_name) {
   std::ofstream outfile(latency_name);
-  for (auto &latency : latencies) {
-    outfile << latency << std::endl;
+  for (auto &pair : latencies) {
+    outfile << pair.first << ' ' << pair.second << std::endl;
   }
 }
 
@@ -113,17 +114,28 @@ bool IsQuery(uint8_t *buffer) {
   return buffer[kMySQLHeaderLen] == static_cast<uint8_t>(COM_QUERY);
 }
 
-std::pair<int, std::string> ExtractQuery(uint8_t *buffer) {
+int ExtractQueryIndex(const std::string &query) {
+  return atoi(query.c_str());
+}
+
+int ExtractQueryId(const std::string &query) {
+  return atoi(query.c_str() + kNumIndexDigits);
+}
+
+void ExtractQuery(
+    uint8_t *buffer, std::string &query,
+    int &query_index, int &query_id) {
   size_t query_size = mysql_get_byte3(buffer) - 1;
-  char *query = reinterpret_cast<char *>(buffer + kMySQLHeaderLen + 1);
-  int query_index = -1;
-  if (isdigit(query[0])) {
-    query[kNumIndexDigits - 1] = '\0';
+  char *query_buffer = reinterpret_cast<char *>(buffer + kMySQLHeaderLen + 1);
+  query_index = -1;
+  query_id = -1;
+  if (isdigit(query_buffer[0])) {
     query_index = atoi(query);
-    query += kNumIndexDigits;
-    query_size -= kNumIndexDigits;
+    query_id = atoi(query);
+    query += kNumIndexDigits + kNumIdDigits;
+    query_size -= kNumIndexDigits + kNumIdDigits;
   }
-  return std::make_pair(query_index, std::string(query, query_size));
+  query = std::string(query_buffer, query_size);
 }
 
 int ExtractID(const std::string &query) {
@@ -548,9 +560,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   int ID = -1;
   size_t num_misses = 0;
   size_t num_queries = 0;
-  std::vector<long> query_process_latencies;
-  std::vector<long> read_latencies;
-  std::vector<long> write_latencies;
+  std::vector<std::pair<int, long>> query_process_latencies;
+  std::vector<std::pair<int, long>> read_latencies;
+  std::vector<std::pair<int, long>> write_latencies;
   std::vector<bool> have_savepoint;
   std::vector<bool> need_rollback;
 
@@ -622,9 +634,10 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
     }
     if (::IsQuery(client_connection.Buffer())) {
       auto query_start = Now();
-      auto pair = ::ExtractQuery(client_connection.Buffer());
-      int query_index = pair.first;
-      std::string query = pair.second;
+      std::string query;
+      int query_id;
+      int query_index;
+      ::ExtractQuery(client_connection.Buffer(), query, query_id, query_index);
       if (ID == -1 && query.find("ID=") == 0) {
         ID = ::ExtractID(query);
         client_connection.Send(kOkPacket, sizeof(kOkPacket));
@@ -657,11 +670,12 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       bytes_down += packet_size;
       if (has_begun) {
         auto latency = GetDuration(query_start);
-        query_process_latencies.push_back(latency);
         if (IsRead(query)) {
-          read_latencies.push_back(latency);
-        } else {
-          write_latencies.push_back(latency);
+          read_latencies.push_back(std::make_pair(query_id, latency));
+          query_process_latencies.push_back(std::make_pair(query_id, latency));
+        } else if (query != "BEGIN" && query != "COMMIT") {
+          write_latencies.push_back(std::make_pair(query_id, latency));
+          query_process_latencies.push_back(std::make_pair(query_id, latency));
         }
       }
     } else {

@@ -41,12 +41,6 @@ def calc_stats(ori_latencies, sqp_latencies, query_count, aggregate_name, aggreg
     sqp_query_latencies = sqp_latencies[query_id]
     ori_latencies_all += ori_query_latencies
     sqp_latencies_all += sqp_query_latencies
-    ori_stat = aggregator(ori_query_latencies)
-    sqp_stat = aggregator(sqp_query_latencies)
-    speedup = ori_stat / sqp_stat
-    propotion = 100.0 * len(ori_query_latencies) / query_count
-    print '%s, %d, %f, %f, %f, %f' % (aggregate_name, query_id, propotion,
-                                      ori_stat, sqp_stat, speedup)
   ori_latency_stat = aggregator(ori_latencies_all)
   sqp_latency_stat = aggregator(sqp_latencies_all)
   overall_speedup = ori_latency_stat / sqp_latency_stat

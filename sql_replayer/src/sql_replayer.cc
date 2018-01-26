@@ -463,10 +463,10 @@ int main(int argc, char *argv[]) {
     client.join();
   }
   ::DumpTrxLatencies(trx_latencies, postfix);
-  ::DumpQueryLatencies(e2e_query_latencies, "all", postfix);
+  ::DumpQueryLatencies(e2e_query_latencies, "e2e_query", postfix);
   ::DumpQueryLatencies(read_latencies, "read", postfix);
   ::DumpQueryLatencies(write_latencies, "write", postfix);
-  ::DumpQueryLatencies(server_query_latencies, "query_process", postfix);
+  ::DumpQueryLatencies(server_query_latencies, "server_query", postfix);
 
   return 0;
 }

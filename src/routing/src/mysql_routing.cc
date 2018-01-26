@@ -130,8 +130,8 @@ void ExtractQuery(
   query_index = -1;
   query_id = -1;
   if (isdigit(query_buffer[0])) {
-    query_index = ExtractQueryIndex(query);
-    query_id = ExtractQueryId(query);
+    query_index = ExtractQueryIndex(query_buffer);
+    query_id = ExtractQueryId(query_buffer);
     query_buffer += kNumIndexDigits + kNumIdDigits;
     query_size -= kNumIndexDigits + kNumIdDigits;
   }

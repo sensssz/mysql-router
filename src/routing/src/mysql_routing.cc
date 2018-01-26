@@ -130,8 +130,8 @@ void ExtractQuery(
   query_index = -1;
   query_id = -1;
   if (isdigit(query_buffer[0])) {
-    query_index = atoi(query);
-    query_id = atoi(query);
+    query_index = ExtractQueryIndex(query);
+    query_id = ExtractQueryId(query);
     query += kNumIndexDigits + kNumIdDigits;
     query_size -= kNumIndexDigits + kNumIdDigits;
   }

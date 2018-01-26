@@ -170,10 +170,10 @@ std::unique_ptr<sql::Connection> ConnectToDb(const std::string &server, const st
 
 // Rewind to start of transaction
 size_t Rewind(size_t start,
-              const std::vector<std::pair<std::string, long>> &trace) {
+              const std::vector<std::string> &queries) {
   for (; start > 0; start--) {
-    auto &query = trace[start];
-    if (query.first == "BEGIN") {
+    auto &query = queries[start];
+    if (query == "BEGIN") {
       return start;
     }
   }
@@ -186,6 +186,7 @@ std::string NumberedQuery(size_t index, int query_id, const std::string &query) 
   return std::string(digits, kNumIndexDigits) + query;
 }
 
+/*
 void WarmUp(sql::Connection *conn,
             const std::vector<std::pair<std::string, long>> &trace) {
   std::unique_ptr<sql::Statement> stmt(conn->createStatement());
@@ -202,11 +203,12 @@ void WarmUp(sql::Connection *conn,
   }
   std::cout << std::endl << "Warm up complets" << std::endl;
 }
+*/
 
 void Replay(int ID, const std::string &server,
             const std::string &database,
             std::set<size_t> wait_queries,
-            std::vector<long> &query_latencies,
+            std::vector<std::pair<int, long>> &query_latencies,
             std::vector<long> &trx_latencies,
             const std::vector<std::string> &queries,
             const std::vector<int> &query_ids,
@@ -247,14 +249,14 @@ void Replay(int ID, const std::string &server,
       try {
         bool is_select = stmt->execute(NumberedQuery(i, query_id, query));
         if (!is_begin) {
-          query_latencies.push_back(GetDuration(start));
+          query_latencies.push_back(std::make_pair(query_id, GetDuration(start)));
         }
         if (is_select) {
           delete stmt->getResultSet();
         }
       } catch (sql::SQLException &e) {
         if (!is_begin) {
-          query_latencies.push_back(GetDuration(start));
+          query_latencies.push_back(std::make_pair(query_id, GetDuration(start)));
         }
         std::cout << "\n# ERR: " << e.what();
         std::cout << " (MySQL error code: " << e.getErrorCode();
@@ -268,7 +270,7 @@ void Replay(int ID, const std::string &server,
         }
         // Rewind when transaction times out
         else if (e.getErrorCode() == 1205) {
-          i = Rewind(i, trace) - 1;
+          i = Rewind(i, queries) - 1;
         }
         // Skip for duplicates or syntax error
         else if (e.getErrorCode() != 1062 &&
@@ -350,7 +352,7 @@ void ClientThread(int ID, const std::string &server,
   std::vector<long> local_trx_latencies;
   std::vector<std::pair<int, long>> local_e2e_query_latencies;
   ::Replay(ID, server, database, wait_queries, local_e2e_query_latencies,
-           local_trx_latencies, queries, queries_ids, think_times);
+           local_trx_latencies, queries, query_ids, think_times);
   auto local_server_query_latencies = ::GetQueryProcessLatencies(query_ids, "query_process", ID);
   auto local_read_latencies = ::GetQueryProcessLatencies("read_process", ID);
   auto local_write_latencies = ::GetQueryProcessLatencies("write_process", ID);
@@ -436,7 +438,7 @@ int main(int argc, char *argv[]) {
 
   std::vector<std::string> queries;
   std::vector<int> query_ids;
-  std::vector<int> think_times;
+  std::vector<long> think_times;
   ::LoadWorkloadTrace(workload_file, queries, query_ids, think_times);
   std::set<size_t> wait_queries = LoadWaitQueries("wait_queries");
   std::vector<long> trx_latencies;
@@ -452,8 +454,8 @@ int main(int argc, char *argv[]) {
       std::cout << "Spawning client " << i << std::endl;
       ::ClientThread(i, server, database, mutex, trx_latencies,
                      e2e_query_latencies, read_latencies, write_latencies,
-                     server_query_latencies, query_ids, wait_queries,
-                     queries, queries_ids, think_times);
+                     server_query_latencies, queries, query_ids,
+                     think_times, wait_queries);
     });
     clients.push_back(std::move(client));
   }

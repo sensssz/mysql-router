@@ -114,12 +114,12 @@ bool IsQuery(uint8_t *buffer) {
   return buffer[kMySQLHeaderLen] == static_cast<uint8_t>(COM_QUERY);
 }
 
-int ExtractQueryIndex(const std::string &query) {
-  return atoi(query.c_str());
+int ExtractQueryIndex(const char *buffer) {
+  return atoi(buffer);
 }
 
-int ExtractQueryId(const std::string &query) {
-  return atoi(query.c_str() + kNumIndexDigits);
+int ExtractQueryId(const char *buffer) {
+  return atoi(buffer + kNumIndexDigits);
 }
 
 void ExtractQuery(
@@ -637,7 +637,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       std::string query;
       int query_id;
       int query_index;
-      ::ExtractQuery(client_connection.Buffer(), query, query_id, query_index);
+      ::ExtractQuery(client_connection.Buffer(), query, query_index, query_id);
       if (ID == -1 && query.find("ID=") == 0) {
         ID = ::ExtractID(query);
         client_connection.Send(kOkPacket, sizeof(kOkPacket));

@@ -182,7 +182,7 @@ size_t Rewind(size_t start,
 
 std::string NumberedQuery(size_t index, int query_id, const std::string &query) {
   char digits[kNumIndexDigits];
-  sprintf(digits, "%-9lu\0%-9lu", index, query_id);
+  sprintf(digits, "%-10lu%-9d", index, query_id);
   return std::string(digits, kNumIndexDigits) + query;
 }
 

@@ -710,7 +710,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   } // while (true)
 
   client_connection.Disconnect();
-  DumpQueryStats(query_stats, query_process_latencies, "query_stats" + std::string(ID));
+  DumpQueryStats(query_stats, query_process_latencies, "query_stats" + std::to_string(ID));
   DumpLatency(query_process_latencies, "query_process" + std::to_string(ID));
   DumpLatency(read_latencies, "read_process" + std::to_string(ID));
   DumpLatency(write_latencies, "write_process" + std::to_string(ID));

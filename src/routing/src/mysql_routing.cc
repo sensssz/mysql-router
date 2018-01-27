@@ -674,7 +674,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         query_stat = "W,";
       }
       if (iter != prefetches.end()) {
-        query_stat += "H,"
+        query_stat += "H,";
         packet_size = ::HandleSpeculationHit(server_group.get(), query, iter->second,
                                              &client_connection, speculator_.get(),
                                              have_savepoint, need_rollback, prefetches);
@@ -682,7 +682,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         if (query != "BEGIN" && query != "COMMIT") {
           num_misses++;
         }
-        query_stat += "M,"
+        query_stat += "M,";
         packet_size = ::HandleSpeculationMiss(server_group.get(), query, &client_connection,
                                               speculator_.get(), have_savepoint, need_rollback, prefetches);
       }

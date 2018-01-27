@@ -93,6 +93,17 @@ const size_t kSavepointResultBytes = 11;
 
 uint8_t kOkPacket[] = {7, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0};
 
+void DumpQueryStats(std::vector<std::string> &query_stats,
+                    std::vector<std::pair<int, long>> &latencies,
+                    const std::string &filename) {
+  std::ofstream outfile(filename);
+  for (size_t i = 0; i < query_stats.size(); i++) {
+    auto pair = latencies[i];
+    auto stat = query_stats[i];
+    outfile << stat << pair.first << ' ' << pair.second << std::endl;
+  }
+}
+
 void DumpLatency(std::vector<std::pair<int, long>> &latencies, const std::string &latency_name) {
   std::ofstream outfile(latency_name);
   for (auto &pair : latencies) {
@@ -563,8 +574,10 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::vector<std::pair<int, long>> query_process_latencies;
   std::vector<std::pair<int, long>> read_latencies;
   std::vector<std::pair<int, long>> write_latencies;
+  std::vector<std::string> query_stats;
   std::vector<bool> have_savepoint;
   std::vector<bool> need_rollback;
+  std::string query_stat;
 
   auto server_group = destination_->GetServerGroup();
   if (server_group.get() == nullptr) {
@@ -655,12 +668,21 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       num_queries++;
       auto iter = prefetches.find(query);
       ssize_t packet_size = -1;
+      if (IsRead(query)) {
+        query_stat = "R,";
+      } else {
+        query_stat = "W,";
+      }
       if (iter != prefetches.end()) {
+        query_stat += "H,"
         packet_size = ::HandleSpeculationHit(server_group.get(), query, iter->second,
                                              &client_connection, speculator_.get(),
                                              have_savepoint, need_rollback, prefetches);
       } else {
-        num_misses++;
+        if (query != "BEGIN" && query != "COMMIT") {
+          num_misses++;
+        }
+        query_stat += "M,"
         packet_size = ::HandleSpeculationMiss(server_group.get(), query, &client_connection,
                                               speculator_.get(), have_savepoint, need_rollback, prefetches);
       }
@@ -673,9 +695,11 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         if (IsRead(query)) {
           read_latencies.push_back(std::make_pair(query_id, latency));
           query_process_latencies.push_back(std::make_pair(query_id, latency));
+          query_stats.push_back(query_stat);
         } else if (query != "BEGIN" && query != "COMMIT") {
           write_latencies.push_back(std::make_pair(query_id, latency));
           query_process_latencies.push_back(std::make_pair(query_id, latency));
+          query_stats.push_back(query_stat);
         }
       }
     } else {
@@ -686,6 +710,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   } // while (true)
 
   client_connection.Disconnect();
+  DumpQueryStats(query_stats, query_process_latencies, "query_stats" + std::string(ID));
   DumpLatency(query_process_latencies, "query_process" + std::to_string(ID));
   DumpLatency(read_latencies, "read_process" + std::to_string(ID));
   DumpLatency(write_latencies, "write_process" + std::to_string(ID));

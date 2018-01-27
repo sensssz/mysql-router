@@ -23,12 +23,17 @@ def per_query_speedup(ori_latencies, sqp_latencies):
   ''' Calculate the average speedup of per-query speedups
   '''
   speedups = []
-  for ori_latency, sqp_latency in zip(ori_latencies, sqp_latencies):
+  all_ori_latencies = []
+  all_sqp_latencies = []
+  for query_id in ori_latencies:
+    all_ori_latencies += ori_latencies[query_id]
+    all_sqp_latencies += sqp_latencies[query_id]
+  for ori_latency, sqp_latency in zip(all_ori_latencies, all_sqp_latencies):
     speedups.append(float(ori_latency) / sqp_latency)
   return np.mean(speedups)
 
 
-def per_query_group_speedup(ori_latencies, sqp_latencies, aggregator):
+def weighted_query_group_speedup(ori_latencies, sqp_latencies, aggregator):
   ''' Calculate the weighted speedup of each query type with the give aggregator
   '''
   total_num_queries = 0
@@ -38,6 +43,16 @@ def per_query_group_speedup(ori_latencies, sqp_latencies, aggregator):
     sqp_aggregate = aggregator(sqp_latencies[query_id])
     num_queries = len(ori_latencies[query_id])
     speedup += num_queries * ori_aggregate / sqp_aggregate
+    total_num_queries += num_queries
+
+  for query_id in ori_latencies:
+    ori_aggregate = aggregator(ori_latencies[query_id])
+    sqp_aggregate = aggregator(sqp_latencies[query_id])
+    num_queries = len(ori_latencies[query_id])
+    sys.stderr.write('%d,%f,%f\n' % (query_id, 100 * float(num_queries) / total_num_queries,
+                                     ori_aggregate / sqp_aggregate))
+  sys.stderr.write('\n')
+
   return speedup / total_num_queries
 
 
@@ -55,60 +70,56 @@ def all_query_speedup(ori_latencies, sqp_latencies, aggregator):
 def calc_stats(ori_latencies, sqp_latencies, query_type):
   ''' Calculate stats about original latency and SQP latency
   '''
-  print 'Stat, Speedup Type, Query Type, Speedup of Speculation (x)'
-  print 'Average, Per Query Speedup, %s, %f\n' %\
+  print '%s, Average, Per Query Speedup, %f' %\
         (query_type, per_query_speedup(ori_latencies, sqp_latencies))
-  print 'Average, Per Query Group Speedup, %s, %f\n' %\
-        (query_type, per_query_group_speedup(
+  print '%s, Average, Weighted Query Group Speedup, %f' %\
+        (query_type, weighted_query_group_speedup(
             ori_latencies, sqp_latencies, np.mean))
-  print 'Average, All Query Speedup, %s, %f\n' %\
+  print '%s, Average, All Query Speedup, %f' %\
         (query_type, all_query_speedup(ori_latencies, sqp_latencies, np.mean))
 
-  print 'Median, Per Query Group Speedup, %s, %f\n' %\
-        (query_type, per_query_group_speedup(ori_latencies, sqp_latencies,
-                                             np.median))
-  print 'Median, All Query Speedup, %s, %f\n' %\
-        (query_type, all_query_speedup(ori_latencies, sqp_latencies,
-                                       np.median))
+  print '%s, Median, Weighted Query Group Speedup, %f' %\
+        (query_type, weighted_query_group_speedup(
+            ori_latencies, sqp_latencies, np.median))
+  print '%s, Median, All Query Speedup, %f' %\
+        (query_type, all_query_speedup(
+            ori_latencies, sqp_latencies, np.median))
 
-  print '95th Percentile, Per Query Group Speedup, %s, %f\n' %\
-        (query_type, per_query_group_speedup(ori_latencies, sqp_latencies,
-                                             lambda x: np.percentile(x, 95)))
-  print '95th Percentile, All Query Speedup, %s, %f\n' %\
-        (query_type, all_query_speedup(ori_latencies, sqp_latencies,
-                                       lambda x: np.percentile(x, 95)))
+  print '%s, 95th Percentile, Weighted Query Group Speedup, %f' %\
+        (query_type, weighted_query_group_speedup(
+            ori_latencies, sqp_latencies, lambda x: np.percentile(x, 95)))
+  print '%s, 95th Percentile, All Query Speedup, %f' %\
+        (query_type, all_query_speedup(
+            ori_latencies, sqp_latencies, lambda x: np.percentile(x, 95)))
 
-  print '99th Percentile, Per Query Group Speedup, %s, %f\n' %\
-        (query_type, per_query_group_speedup(ori_latencies, sqp_latencies,
-                                             lambda x: np.percentile(x, 99)))
-  print '99th Percentile, All Query Speedup, %s, %f\n' %\
-        (query_type, all_query_speedup(ori_latencies, sqp_latencies,
-                                       lambda x: np.percentile(x, 99)))
+  print '%s, 99th Percentile, Weighted Query Group Speedup, %f' %\
+        (query_type, weighted_query_group_speedup(
+            ori_latencies, sqp_latencies, lambda x: np.percentile(x, 99)))
+  print '%s, 99th Percentile, All Query Speedup, %f' %\
+        (query_type, all_query_speedup(
+            ori_latencies, sqp_latencies, lambda x: np.percentile(x, 99)))
 
 
 def calc_stats_for_query_types(latency_type, query_type, tag):
   ''' Calculate stats about each query type
   '''
   ori_latencies = load_latencies(
-      'latencies/' + latency_type + '_latencies_' + tag + '_ori')
+      'latencies/' + latency_type + '_' + tag + '_ori')
   sqp_latencies = load_latencies(
-      'latencies/' + latency_type + '_latencies_' + tag + '_sqp')
-  calc_stats(ori_latencies, sqp_latencies, query_type)
-  calc_stats(ori_latencies, sqp_latencies, query_type)
-  calc_stats(ori_latencies, sqp_latencies, query_type)
+      'latencies/' + latency_type + '_' + tag + '_sqp')
   calc_stats(ori_latencies, sqp_latencies, query_type)
 
 
 def main(tag):
-    ''' Main function
-    '''
-    calc_stats_for_query_types('e2e_query', 'Mixed', tag)
-    calc_stats_for_query_types('server_query', 'Mixed', tag)
-    calc_stats_for_query_types('read', 'Read', tag)
-    calc_stats_for_query_types('write', 'Write', tag)
+  ''' Main function
+  '''
+  print 'Stat, Speedup Type, Query Type, Speedup of Speculation (x)'
+  calc_stats_for_query_types('server_query', 'Mixed', tag)
+  calc_stats_for_query_types('read', 'Read', tag)
+  calc_stats_for_query_types('write', 'Write', tag)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print 'Usage %s [tag]' % sys.argv[0]
-    main(sys.argv[1])
+  if len(sys.argv) != 2:
+    print 'Usage %s [tag]' % sys.argv[0]
+  main(sys.argv[1])

@@ -69,6 +69,6 @@ std::vector<std::string> LogSpeculator::TrySpeculate(const std::string &query, i
   return speculations_;
 }
 
-virtual std::vector<int> LogSpeculator::GetSpeculationIndices() {
+std::vector<int> LogSpeculator::GetSpeculationIndices() {
   return indices_;
 }

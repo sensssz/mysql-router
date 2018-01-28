@@ -353,7 +353,7 @@ void ClientThread(int ID, const std::string &server,
   std::vector<std::pair<int, long>> local_e2e_query_latencies;
   ::Replay(ID, server, database, wait_queries, local_e2e_query_latencies,
            local_trx_latencies, queries, query_ids, think_times);
-  auto local_server_query_latencies = ::GetQueryProcessLatencies(query_ids, "query_process", ID);
+  auto local_server_query_latencies = ::GetQueryProcessLatencies("query_process", ID);
   auto local_read_latencies = ::GetQueryProcessLatencies("read_process", ID);
   auto local_write_latencies = ::GetQueryProcessLatencies("write_process", ID);
   {

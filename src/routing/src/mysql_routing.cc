@@ -578,6 +578,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::vector<bool> have_savepoint;
   std::vector<bool> need_rollback;
   std::string query_stat;
+  bool previous_is_write = false;
 
   auto server_group = destination_->GetServerGroup();
   if (server_group.get() == nullptr) {
@@ -673,15 +674,24 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       } else {
         query_stat = "W,";
       }
+      previous_is_write = false;
+      for (auto &speculation : prefetches) {
+        if (IsWrite(speculation.first)) {
+          previous_is_write = true;
+        }
+      }
+      if (previous_is_write) {
+        query_stat += "W,";
+      } else {
+        query_stat += "R,";
+      }
       if (iter != prefetches.end()) {
         query_stat += "H,";
         packet_size = ::HandleSpeculationHit(server_group.get(), query, iter->second,
                                              &client_connection, speculator_.get(),
                                              have_savepoint, need_rollback, prefetches);
       } else {
-        if (query != "BEGIN" && query != "COMMIT") {
-          num_misses++;
-        }
+        num_misses++;
         query_stat += "M,";
         packet_size = ::HandleSpeculationMiss(server_group.get(), query, &client_connection,
                                               speculator_.get(), have_savepoint, need_rollback, prefetches);

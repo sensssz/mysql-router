@@ -93,7 +93,7 @@ const size_t kSavepointResultBytes = 11;
 
 uint8_t kOkPacket[] = {7, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0};
 
-thread_local<int> speculation_index = -1;
+thread_local int speculation_index = -1;
 
 void DumpQueryStats(std::vector<std::string> &query_stats,
                     std::vector<std::pair<int, long>> &latencies,
@@ -199,7 +199,7 @@ bool DoSpeculation(
   if (speculations.size() == 0) {
     return true;
   }
-  speculation_index = speculator_->GetSpeculationIndices()[0];
+  speculation_index = speculator->GetSpeculationIndices()[0];
   bool done = false;
   auto speculation = speculations[0];
   auto query_to_send = speculation;

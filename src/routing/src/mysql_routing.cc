@@ -93,6 +93,8 @@ const size_t kSavepointResultBytes = 11;
 
 uint8_t kOkPacket[] = {7, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0};
 
+thread_local<int> speculation_index = -1;
+
 void DumpQueryStats(std::vector<std::string> &query_stats,
                     std::vector<std::pair<int, long>> &latencies,
                     const std::string &filename) {
@@ -192,10 +194,12 @@ bool DoSpeculation(
   std::vector<bool> &need_rollback,
   std::unordered_map<std::string, int> &prefetches) {
   prefetches.clear();
+  speculation_index = -1;
   auto speculations = speculator->Speculate(query);
   if (speculations.size() == 0) {
     return true;
   }
+  speculation_index = speculator_->GetSpeculationIndices()[0];
   bool done = false;
   auto speculation = speculations[0];
   auto query_to_send = speculation;
@@ -673,11 +677,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       } else {
         query_stat = "W,";
       }
-      int index = -1;
-      auto indices = speculator_->GetSpeculationIndices();
-      if (indices.size() > 0) {
-        index = indices[0];
-      }
       previous_is_write = false;
       for (auto &speculation : prefetches) {
         if (IsWrite(speculation.first)) {
@@ -685,9 +684,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         }
       }
       if (previous_is_write) {
-        query_stat += "W," + std::to_string(index) + ",";
+        query_stat += "W," + std::to_string(speculation_index) + ",";
       } else {
-        query_stat += "R," + std::to_string(index) + ",";
+        query_stat += "R," + std::to_string(speculation_index) + ",";
       }
       bool hit = iter != prefetches.end();
       if (hit) {

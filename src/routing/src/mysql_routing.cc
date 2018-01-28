@@ -96,13 +96,11 @@ uint8_t kOkPacket[] = {7, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0};
 thread_local int speculation_index = -1;
 
 void DumpQueryStats(std::vector<std::string> &query_stats,
-                    std::vector<std::pair<int, long>> &latencies,
                     const std::string &filename) {
   std::ofstream outfile(filename);
   for (size_t i = 0; i < query_stats.size(); i++) {
-    auto pair = latencies[i];
     auto stat = query_stats[i];
-    outfile << stat << pair.first << ' ' << pair.second << std::endl;
+    outfile << stat << std::endl;
   }
 }
 

@@ -714,12 +714,15 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         if (IsRead(query)) {
           read_latencies.push_back(std::make_pair(query_id, latency));
           query_process_latencies.push_back(std::make_pair(query_id, latency));
-          query_stats.push_back(query_stat);
+          query_stat += std::to_string(query_id) + "," + latency;
         } else if (query != "BEGIN" && query != "commit") {
           write_latencies.push_back(std::make_pair(query_id, latency));
           query_process_latencies.push_back(std::make_pair(query_id, latency));
-          query_stats.push_back(query_stat);
+          query_stat += std::to_string(query_id) + "," + latency;
+        } else {
+          query_stat += "-1," + latency;
         }
+        query_stats.push_back(query_stat);
       }
     } else {
       if (!::HandleNonQuery(server_group.get(), &client_connection, bytes_read, bytes_up, bytes_down)) {
@@ -729,7 +732,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   } // while (true)
 
   client_connection.Disconnect();
-  DumpQueryStats(query_stats, query_process_latencies, "query_stats" + std::to_string(ID));
+  DumpQueryStats(query_stats, "query_stats" + std::to_string(ID));
   DumpLatency(query_process_latencies, "query_process" + std::to_string(ID));
   DumpLatency(read_latencies, "read_process" + std::to_string(ID));
   DumpLatency(write_latencies, "write_process" + std::to_string(ID));

@@ -29,6 +29,7 @@ std::vector<std::string> LogSpeculator::Speculate(const std::string &query, int 
   current_query_++;
   has_speculation_ = false;
   speculations_.clear();
+  indices_.clear();
   return std::move(speculations);
 }
 
@@ -48,20 +49,26 @@ std::vector<std::string> LogSpeculator::TrySpeculate(const std::string &query, i
         next_query.find("COMMIT") == std::string::npos) {
       log_debug("Will make prediction hit with %s", next_query.c_str());
       speculations_.push_back(next_query);
+      indices_.push_back(current_query_ + 1);
     } else {
       log_debug("Cannot predict BEGIN or COMMIT");
     }
     num_speculations--;
   }
   while (num_speculations > 0) {
-    auto query = queries_[index_dist_(rand_index_)];
+    auto index = index_dist_(rand_index_);
+    auto query = queries_[index];
     if (query == "BEGIN" || query == "COMMIT") {
       continue;
     }
     speculations_.push_back(query);
+    indices_.push_back(index);
     num_speculations--;
   }
 
   return speculations_;
+}
 
+virtual std::vector<int> LogSpeculator::GetSpeculationIndices() {
+  return indices_;
 }

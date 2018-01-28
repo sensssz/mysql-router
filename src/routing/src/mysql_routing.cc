@@ -673,6 +673,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       } else {
         query_stat = "W,";
       }
+      auto index = speculator_->GetSpeculationIndices()[0];
       previous_is_write = false;
       for (auto &speculation : prefetches) {
         if (IsWrite(speculation.first)) {
@@ -680,9 +681,9 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         }
       }
       if (previous_is_write) {
-        query_stat += "W,";
+        query_stat += "W," + std::to_string(index) + ",";
       } else {
-        query_stat += "R,";
+        query_stat += "R," + std::to_string(index) + ",";
       }
       bool hit = iter != prefetches.end();
       if (hit) {

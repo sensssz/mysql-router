@@ -674,7 +674,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         query_stat = "W,";
       }
       int index = -1;
-      auto indices = speculator_->GetSpeculationIndices()[0];
+      auto indices = speculator_->GetSpeculationIndices();
       if (indices.size() > 0) {
         index = indices[0];
       }

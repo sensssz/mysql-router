@@ -666,7 +666,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       speculator_->CheckBegin(query);
       speculator_->SetQueryIndex(query_index);
       log_debug("Query is %s", query.c_str());
-      num_queries++;
       auto iter = prefetches.find(query);
       ssize_t packet_size = -1;
       if (IsRead(query)) {
@@ -685,19 +684,25 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       } else {
         query_stat += "R,";
       }
-      if (iter != prefetches.end()) {
+      bool hit = iter != prefetches.end();
+      if (hit) {
         query_stat += "H,";
         packet_size = ::HandleSpeculationHit(server_group.get(), query, iter->second,
                                              &client_connection, speculator_.get(),
                                              have_savepoint, need_rollback, prefetches);
       } else {
-        num_misses++;
         query_stat += "M,";
         packet_size = ::HandleSpeculationMiss(server_group.get(), query, &client_connection,
                                               speculator_.get(), have_savepoint, need_rollback, prefetches);
       }
       if (packet_size < 0) {
         break;
+      }
+      if (query != "BEGIN" && query != "commit") {
+        num_queries++;
+        if (!hit) {
+          num_misses++;
+        }
       }
       bytes_down += packet_size;
       if (has_begun) {
@@ -706,7 +711,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
           read_latencies.push_back(std::make_pair(query_id, latency));
           query_process_latencies.push_back(std::make_pair(query_id, latency));
           query_stats.push_back(query_stat);
-        } else if (query != "BEGIN" && query != "COMMIT") {
+        } else if (query != "BEGIN" && query != "commit") {
           write_latencies.push_back(std::make_pair(query_id, latency));
           query_process_latencies.push_back(std::make_pair(query_id, latency));
           query_stats.push_back(query_stat);

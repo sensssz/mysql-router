@@ -195,11 +195,13 @@ bool DoSpeculation(
   std::unordered_map<std::string, int> &prefetches) {
   prefetches.clear();
   speculation_index = -1;
+  speculator->TrySpeculate(query, 1);
+  auto indices = speculator->GetSpeculationIndices();
   auto speculations = speculator->Speculate(query);
   if (speculations.size() == 0) {
     return true;
   }
-  speculation_index = speculator->GetSpeculationIndices()[0];
+  speculation_index = indices[0];
   bool done = false;
   auto speculation = speculations[0];
   auto query_to_send = speculation;

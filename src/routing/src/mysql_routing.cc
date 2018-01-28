@@ -673,7 +673,11 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       } else {
         query_stat = "W,";
       }
-      auto index = speculator_->GetSpeculationIndices()[0];
+      int index = -1;
+      auto indices = speculator_->GetSpeculationIndices()[0];
+      if (indices.size() > 0) {
+        index = indices[0];
+      }
       previous_is_write = false;
       for (auto &speculation : prefetches) {
         if (IsWrite(speculation.first)) {

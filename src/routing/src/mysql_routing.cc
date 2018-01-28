@@ -714,13 +714,13 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         if (IsRead(query)) {
           read_latencies.push_back(std::make_pair(query_id, latency));
           query_process_latencies.push_back(std::make_pair(query_id, latency));
-          query_stat += std::to_string(query_id) + "," + latency;
+          query_stat += std::to_string(query_id) + "," + std::to_string(latency);
         } else if (query != "BEGIN" && query != "commit") {
           write_latencies.push_back(std::make_pair(query_id, latency));
           query_process_latencies.push_back(std::make_pair(query_id, latency));
-          query_stat += std::to_string(query_id) + "," + latency;
+          query_stat += std::to_string(query_id) + "," + std::to_string(latency);
         } else {
-          query_stat += "-1," + latency;
+          query_stat += "-1," + std::to_string(latency);
         }
         query_stats.push_back(query_stat);
       }

@@ -3,6 +3,8 @@
 
 #include <fstream>
 
+#include <cassert>
+
 LogSpeculator::LogSpeculator(const std::string &filename) :
     start_(false), current_query_(0), previous_write_(-1), has_speculation_(false),
     rand_gen_(rd_()), dist_(1, 100), rand_index_(rd_()) {
@@ -19,9 +21,9 @@ LogSpeculator::LogSpeculator(const std::string &filename) :
   int index;
   char space;
   while (!undo_file.eof()) {
-    undo_file << index;
-    undo_file << space;
-    std::get_line(undo_file, line);
+    undo_file >> index;
+    undo_file >> space;
+    std::getline(undo_file, line);
     undos_[index] = line;
   }
   index_dist_ = std::uniform_int_distribution<int>(0, static_cast<int>(queries_.size() - 1));
@@ -35,8 +37,8 @@ std::string LogSpeculator::GetUndo() {
   auto iter = undos_.find(previous_write_);
   if (iter != undos_.end()) {
     assert(speculation.find("INSERT") == 0 &&
-           iter.second.find("DELETE") == 0);
-    return iter.second + ";";
+           iter->second.find("DELETE") == 0);
+    return iter->second + ";";
   }
   if (speculation.find("UPDATE") == 0) {
     return speculation + ";";

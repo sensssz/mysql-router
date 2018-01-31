@@ -19,10 +19,8 @@ LogSpeculator::LogSpeculator(const std::string &filename) :
     queries_.push_back(line);
   }
   int index;
-  char space;
   while (!undo_file.eof()) {
     undo_file >> index;
-    undo_file >> space;
     std::getline(undo_file, line);
     undos_[index] = line;
   }

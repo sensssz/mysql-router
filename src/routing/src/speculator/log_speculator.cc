@@ -67,8 +67,9 @@ std::vector<std::string> LogSpeculator::TrySpeculate(const std::string &query, i
   if (!start_ || current_query_ == -1) {
     return speculations_;
   }
-  if (speculations_[0].find("INSERT") == 0 ||
-      speculations_[0].find("UPDATE") == 0) {
+  if ((speculations_[0].find("INSERT") == 0 ||
+       speculations_[0].find("UPDATE") == 0) &&
+      indices_.size() > 0) {
     previous_write_ = indices_[0];
   }
   has_speculation_ = true;

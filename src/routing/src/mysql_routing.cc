@@ -203,6 +203,7 @@ bool DoSpeculation(
   bool done = false;
   auto speculation = speculations[0];
   auto query_to_send = speculation;
+  auto undo = speculator->GetUndo();
   done = false;
   if (IsRead(speculation)) {
     while (!done) {
@@ -214,7 +215,7 @@ bool DoSpeculation(
         }
         int num_queries = 1;
         if (need_rollback[i]) {
-          query_to_send = "ROLLBACK to write_save; " + speculation;
+          query_to_send = undo + speculation;
           need_rollback[i] = false;
           num_queries = 2;
         }
@@ -233,14 +234,8 @@ bool DoSpeculation(
       int num_queries = 0;
       server_group->WaitForServer(i);
       if (need_rollback[i]) {
-        query_to_send = "ROLLBACK to write_save; SAVEPOINT write_save; " + speculation;
+        query_to_send = undo + speculation;
         need_rollback[i] = false;
-        num_queries = 3;
-      } else if (have_savepoint[i]) {
-        query_to_send = "RELEASE SAVEPOINT write_save; SAVEPOINT write_save; " + speculation;
-        num_queries = 3;
-      } else {
-        query_to_send = "SAVEPOINT write_save; " + speculation;
         num_queries = 2;
       }
       log_debug("Sending speculation %s to server %d", query_to_send.c_str(), i);
@@ -249,7 +244,6 @@ bool DoSpeculation(
         return false;
       }
     }
-    SetHaveSavepoint(have_savepoint, true);
     prefetches[speculation] = 0;
   }
   log_debug("Speculation sent");
@@ -346,23 +340,24 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
                               std::unordered_map<std::string, int> &prefetches) {
   int server = -1;
   ssize_t packet_size;
+  bool speculation_is_write = false;
+  auto next_speculation = speculator->TrySpeculate(query, 1);
+  if (next_speculation.size() > 0 && IsWrite(next_speculation[0])) {
+    speculation_is_write = true;
+  }
   bool previous_is_write = false;
   auto query_to_send = query;
+  auto undo = speculator->GetUndo();
   int num_queries = 1;
   SetNeedRollback(need_rollback, false);
   for (auto &speculation : prefetches) {
     if (IsWrite(speculation.first)) {
       previous_is_write = true;
       SetNeedRollback(need_rollback, true);
-      query_to_send = "ROLLBACK TO write_save; " + query;
+      query_to_send = undo + query;
       num_queries = 2;
       break;
     }
-  }
-  bool speculation_is_write = false;
-  auto next_speculation = speculator->TrySpeculate(query, 1);
-  if (next_speculation.size() > 0 && IsWrite(next_speculation[0])) {
-    speculation_is_write = true;
   }
   // Prediction not hit, send it now.
   log_debug("Prediction fails");

@@ -4,6 +4,7 @@
 #include "speculator.h"
 
 #include <random>
+#include <unordered_map>
 #include <vector>
 
 class LogSpeculator : public Speculator {
@@ -21,6 +22,7 @@ public:
   virtual void SetQueryIndex(int query_index) override {
     current_query_ = query_index;
   }
+  virtual std::string GetUndo() override;
   virtual std::vector<std::string> Speculate(const std::string &query) override {
     return Speculate(query, 1);
   }
@@ -30,8 +32,10 @@ public:
 
 private:
   std::vector<std::string> queries_;
+  std::unordered_map<int, std::string> undos_;
   bool start_;
   int current_query_;
+  int previous_write_;
   bool has_speculation_;
   std::vector<int> indices_;
   std::vector<std::string> speculations_;

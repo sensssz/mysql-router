@@ -231,7 +231,7 @@ bool DoSpeculation(
     }
   } else {
     for (size_t i = 0; i < server_group->Size(); i++) {
-      int num_queries = 0;
+      int num_queries = 1;
       server_group->WaitForServer(i);
       if (need_rollback[i]) {
         query_to_send = undo + speculation;

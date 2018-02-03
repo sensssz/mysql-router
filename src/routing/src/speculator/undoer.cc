@@ -51,14 +51,14 @@ uint8_t *ReadLengthEncodedInt(uint8_t *payload, uint64_t num) {
 uint8_t *ReadLengthEncodedString(uint8_t *payload, std::string &str) {
   uint64_t size;
   payload = ReadLengthEncodedInt(payload, size);
-  str = std::string(payload, size);
+  str = std::string(static_cast<char *>(payload), size);
   return payload + size;
 }
 
 uint8_t *GetFieldCount(uint8_t *payload, uint64_t field_count) {
   Packet packet;
   payload = ReadNextPacket(payload, packet);
-  ReadLengthEncodedInt(packet.data, field_count);
+  ReadLengthEncodedInt(packet.payload, field_count);
   return payload;
 }
 
@@ -79,14 +79,14 @@ std::unordered_map<std::string, std::vector<std::string>> Undoer::kTablePkeys {
 Undoer::Undoer(ServerGroup *server_group) : server_group_(server_group) {}
 
 std::string Undoer::GetUndoQuery(const std::string &query) {
-  hsql::SQLParseResult result;
-  hsql::SQLParser::parse(speculation, &result);
+  hsql::SQLParserResult result;
+  hsql::SQLParser::parse(query, &result);
   auto stmt = result.getStatement(0);
   switch (stmt->type()) {
-  case sql::hsql::kStmtInsert:
+  case hsql::kStmtInsert:
     return GetInsertUndo(reinterpret_cast<const hsql::InsertStatement *>(stmt));
-  case sql::hsql::kStmtUpdate:
-    return GetUpdateUndo(speculation, reinterpret_cast<const hsql::UpdateStatement *>(stmt));
+  case hsql::kStmtUpdate:
+    return GetUpdateUndo(query, reinterpret_cast<const hsql::UpdateStatement *>(stmt));
   default:
     return "";
   }
@@ -112,7 +112,7 @@ std::string Undoer::GetQueryFromUpdate(
   const std::vector<std::string> &values) {
   auto table_name = std::string(stmt->table->name);
   auto updates = *(stmt->updates);
-  auto undo_query;
+  std::string undo_query;
   if (values.size() > 0) {
     undo_query = "Update " + table_name + " SET " +
                  std::string(updates[0]->column) + "=" + values[0];
@@ -121,7 +121,7 @@ std::string Undoer::GetQueryFromUpdate(
   }
 
   for (size_t i = 1; i < updates.size(); i++) {
-    auto column = std::string(update[i]->column);
+    auto column = std::string(updates[i]->column);
     if (values.size() > 0) {
       undo_query += "," + std::string(column) + "=" + values[i];
     } else {
@@ -141,7 +141,7 @@ std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result,
   Packet packet;
   uint8_t *payload = result.get();
   uint64_t field_count = 0;
-  payload = GetFieldCount(payload, field_count);
+  payload = ::GetFieldCount(payload, field_count);
   // The column definitions do not matter to us, so just consume them
   for (uint64_t i = 0; i < field_count; i++) {
     payload = ReadNextPacket(payload, packet);
@@ -156,7 +156,7 @@ std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result,
   std::string str;
   uint8_t *cur = packet.data;
   for (uint64_t i = 0; i < field_count; i++) {
-    cur = ReadLengthEncodedString(cur, str);
+    cur = ::ReadLengthEncodedString(cur, str);
     values.push_back(str);
   }
   return std::move(values);

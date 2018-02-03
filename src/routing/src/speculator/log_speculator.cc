@@ -2,27 +2,21 @@
 #include "logger.h"
 
 #include <fstream>
+#include <unordered_map>
 
 #include <cassert>
 
-LogSpeculator::LogSpeculator(const std::string &filename) :
-    start_(false), current_query_(0), previous_write_(-1), has_speculation_(false),
-    rand_gen_(rd_()), dist_(1, 100), rand_index_(rd_()) {
-  std::ifstream sql_file(filename + ".sql");
-  std::ifstream undo_file(filename + ".undo");
-  if (sql_file.fail() || undo_file.fail()) {
+LogSpeculator::LogSpeculator(Undoer &&undoer, const std::string &filename) ,
+    undoer_(undoer), start_(false), current_query_(0), previous_write_(-1),
+    has_speculation_(false), rand_gen_(rd_()), dist_(1, 100), rand_index_(rd_()) {
+  std::ifstream sql_file(filename);
+  if (sql_file.fail()) {
     return;
   }
   std::string line;
   while (!sql_file.eof()) {
     std::getline(sql_file, line);
     queries_.push_back(line);
-  }
-  int index;
-  while (!undo_file.eof()) {
-    undo_file >> index;
-    std::getline(undo_file, line);
-    undos_[index] = line;
   }
   index_dist_ = std::uniform_int_distribution<int>(0, static_cast<int>(queries_.size() - 1));
 }
@@ -32,16 +26,7 @@ std::string LogSpeculator::GetUndo() {
     return "";
   }
   auto &speculation = queries_[previous_write_];
-  auto iter = undos_.find(previous_write_);
-  if (iter != undos_.end()) {
-    assert(speculation.find("INSERT") == 0 &&
-           iter->second.find("DELETE") == 0);
-    return iter->second + ";";
-  }
-  if (speculation.find("UPDATE") == 0) {
-    return speculation + ";";
-  }
-  return "";
+  return undoer_.GetUndoQuery(speculation);
 }
 
 void LogSpeculator::CheckBegin(const std::string &query) {

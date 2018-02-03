@@ -126,7 +126,7 @@ static void log_message(Level level, const char* fmt, va_list ap) {
   assert(level < LEVEL_COUNT);
 
   // Format the message
-  char message[256];
+  char message[512];
   vsnprintf(message, sizeof(message), fmt, ap);
 
   // Format the time (19 characters)

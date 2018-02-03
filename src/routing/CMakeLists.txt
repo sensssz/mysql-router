@@ -13,6 +13,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+set(SQP_LOCAL $ENV{HOME}/SQP/.local)
+set(SQP_LIB_DIR ${SQP_LOCAL}/lib)
+set(SQP_INC_DIR ${SQP_LOCAL}/include)
+set(HSQL_LIBRARY ${SQP_LIB_DIR}/libsqlparser.so)
+
 set(ROUTING_SOURCE_FILES_X_PROTOCOL
   ${CMAKE_CURRENT_SOURCE_DIR}/src/protocol/x_protocol.cc
 )
@@ -46,6 +51,7 @@ set(ROUTING_PLUGIN_SOURCE_FILES
 )
 
 set(include_dirs
+  ${SQP_INC_DIR}
   ${CMAKE_SOURCE_DIR}/mysql_harness/plugins/logger/include
   ${CMAKE_SOURCE_DIR}/src/router/include
   ${CMAKE_SOURCE_DIR}/src/routing/include
@@ -98,7 +104,7 @@ else()
                     "-include mysqlrouter/xprotocol.h")
 endif(MSVC)
 
-target_link_libraries(routing PRIVATE ${PB_LIBRARY} ${RDMA_LIBRARIES} ${IBVERBS_LIBRARY} ${OPENSSL_LIBRARIES})
+target_link_libraries(routing PRIVATE ${PB_LIBRARY} ${RDMA_LIBRARIES} ${IBVERBS_LIBRARY} ${OPENSSL_LIBRARIES} ${HSQL_LIBRARY})
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
   target_link_libraries(routing PRIVATE -lnsl PRIVATE -lsocket)

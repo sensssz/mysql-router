@@ -456,7 +456,6 @@ MySQLRouting::MySQLRouting(routing::AccessMode mode, uint16_t port,
       bind_named_socket_(named_socket),
       service_tcp_(0),
       service_named_socket_(0),
-      speculator_(new LogSpeculator("/users/POTaDOS/SQP/auctionmark")),
       stopping_(false),
       info_active_routes_(0),
       info_handled_routes_(0),
@@ -583,6 +582,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   if (server_group.get() == nullptr) {
     return;
   }
+  speculator_.reset(new LogSpeculator(Undoer(server_group.get()), "/users/POTaDOS/SQP/auctionmark.sql"));
 
   std::cerr << "Initiate authentication" << std::endl;
   if (!server_group->Authenticate(&client_connection)) {

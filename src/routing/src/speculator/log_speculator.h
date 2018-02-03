@@ -2,6 +2,7 @@
 #define SPECULATOR_LOG_SPECULATOR_H_
 
 #include "speculator.h"
+#include "undoer.h"
 
 #include <random>
 #include <unordered_map>
@@ -9,7 +10,7 @@
 
 class LogSpeculator : public Speculator {
 public:
-  LogSpeculator(const std::string &filename);
+  LogSpeculator(Undoer &&undoer, const std::string &filename);
   virtual void CheckBegin(const std::string &query) override;
   virtual void SkipQuery() override {
     if (start_) {
@@ -32,7 +33,7 @@ public:
 
 private:
   std::vector<std::string> queries_;
-  std::unordered_map<int, std::string> undos_;
+  Undoer undoer_;
   bool start_;
   int current_query_;
   int previous_write_;

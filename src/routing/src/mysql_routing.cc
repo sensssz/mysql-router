@@ -169,12 +169,6 @@ bool IsWrite(const std::string &query) {
   return !IsRead(query);
 }
 
-void SetHaveSavepoint(std::vector<bool> &have_savepoint, bool have) {
-  for (size_t i = 0; i < have_savepoint.size(); i++) {
-    have_savepoint[i] = have;
-  }
-}
-
 void SetNeedRollback(std::vector<bool> &need_rollback, bool need) {
   for (size_t i = 0; i < need_rollback.size(); i++) {
     need_rollback[i] = need;
@@ -188,7 +182,6 @@ bool DoSpeculation(
   ServerGroup *server_group,
   int reserved_server,
   Speculator *speculator,
-  std::vector<bool> &have_savepoint,
   std::vector<bool> &need_rollback,
   std::unordered_map<std::string, int> &prefetches) {
   prefetches.clear();
@@ -285,7 +278,6 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
                           int server_index,
                           Connection *client,
                           Speculator *speculator,
-                          std::vector<bool> &have_savepoint,
                           std::vector<bool> &need_rollback,
                           std::unordered_map<std::string, int> &prefetches) {
   int server_for_current_query = -1;
@@ -307,14 +299,13 @@ ssize_t HandleSpeculationHit(ServerGroup *server_group,
     }
     log_debug("Sending speculations");
     if (!DoSpeculation(query, server_group, -1, speculator,
-                       have_savepoint, need_rollback, prefetches)) {
+                       need_rollback, prefetches)) {
       return -1;
     }
   } else {
     log_debug("Sending speculations");
     if (!DoSpeculation(query, server_group, server_for_current_query,
-                       speculator, have_savepoint,
-                       need_rollback, prefetches)) {
+                       speculator, need_rollback, prefetches)) {
       return -1;
     }
     if (server_for_current_query != -1) {
@@ -335,7 +326,6 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
                               const std::string &query,
                               Connection *client,
                               Speculator *speculator,
-                              std::vector<bool> &have_savepoint,
                               std::vector<bool> &need_rollback,
                               std::unordered_map<std::string, int> &prefetches) {
   int server = -1;
@@ -365,7 +355,6 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     server_group->WaitForAll();
     if (previous_is_write) {
       SetNeedRollback(need_rollback, false);
-      SetHaveSavepoint(have_savepoint, false);
     }
     log_debug("Sending query %s to all servers", query_to_send.c_str());
     if (!server_group->ForwardToAll(query_to_send, num_queries)) {
@@ -380,7 +369,7 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       return -1;
     }
     packet_size = CopyToClient(server_group->GetResult(server), client);
-    if (!DoSpeculation(query, server_group, -1, speculator, have_savepoint,
+    if (!DoSpeculation(query, server_group, -1, speculator,
                        need_rollback, prefetches)) {
       log_error("Failed to send speculations");
       return -1;
@@ -393,7 +382,6 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     }
     if (previous_is_write) {
       need_rollback[server] = false;
-      have_savepoint[server] = false;
     }
     log_debug("Sending query %s to server %d", query_to_send.c_str(), server);
     if (!server_group->SendQuery(server, query_to_send, num_queries)) {
@@ -405,14 +393,14 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
       server_group->WaitForServer(server);
       packet_size = CopyToClient(server_group->GetResult(server), client);
       log_debug("Got result, doing speculation");
-      if (!DoSpeculation(query, server_group, -1, speculator, have_savepoint,
+      if (!DoSpeculation(query, server_group, -1, speculator,
                          need_rollback, prefetches)) {
         log_error("Failed to send speculations");
         return -1;
       }
     } else {
       log_debug("Doing speculation before waiting for results");
-      if (!DoSpeculation(query, server_group, server, speculator, have_savepoint,
+      if (!DoSpeculation(query, server_group, server, speculator,
                          need_rollback, prefetches)) {
         log_error("Failed to send speculations");
         return -1;
@@ -573,7 +561,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   std::vector<std::pair<int, long>> read_latencies;
   std::vector<std::pair<int, long>> write_latencies;
   std::vector<std::string> query_stats;
-  std::vector<bool> have_savepoint;
   std::vector<bool> need_rollback;
   std::string query_stat;
   bool previous_is_write = false;
@@ -591,7 +578,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   handshake_done = true;
 
   std::vector<bool> all_false(server_group->Size(), false);
-  have_savepoint = all_false;
   need_rollback = all_false;
 
   // int server = destination_->get_server_socket(destination_connect_timeout_, &error);
@@ -658,7 +644,6 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
       }
       bool is_begin = query == "BEGIN";
       if (is_begin) {
-        SetHaveSavepoint(have_savepoint, false);
         SetNeedRollback(need_rollback, false);
       }
       has_begun = has_begun || is_begin;
@@ -688,11 +673,11 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
         query_stat += "H,";
         packet_size = ::HandleSpeculationHit(server_group.get(), query, iter->second,
                                              &client_connection, speculator_.get(),
-                                             have_savepoint, need_rollback, prefetches);
+                                             need_rollback, prefetches);
       } else {
         query_stat += "M,";
         packet_size = ::HandleSpeculationMiss(server_group.get(), query, &client_connection,
-                                              speculator_.get(), have_savepoint, need_rollback, prefetches);
+                                              speculator_.get(), need_rollback, prefetches);
       }
       if (packet_size < 0) {
         break;

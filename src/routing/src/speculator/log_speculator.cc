@@ -6,7 +6,7 @@
 
 #include <cassert>
 
-LogSpeculator::LogSpeculator(Undoer &&undoer, const std::string &filename) ,
+LogSpeculator::LogSpeculator(Undoer &&undoer, const std::string &filename) :
     undoer_(undoer), start_(false), current_query_(0), previous_write_(-1),
     has_speculation_(false), rand_gen_(rd_()), dist_(1, 100), rand_index_(rd_()) {
   std::ifstream sql_file(filename);
@@ -73,11 +73,11 @@ std::vector<std::string> LogSpeculator::TrySpeculate(const std::string &query, i
   }
   while (num_speculations > 0) {
     auto index = index_dist_(rand_index_);
-    auto query = queries_[index];
-    if (query == "BEGIN" || query == "COMMIT" || query.find("DELETE") == 0) {
+    auto speculation = queries_[index];
+    if (speculation == "BEGIN" || speculation == "COMMIT" || speculation.find("DELETE") == 0) {
       continue;
     }
-    speculations_.push_back(query);
+    speculations_.push_back(speculation);
     indices_.push_back(index);
     num_speculations--;
   }

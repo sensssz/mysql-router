@@ -25,12 +25,12 @@ uint8_t *ReadNextPacket(uint8_t *data, Packet &packet) {
 uint64_t ReadNByteInt(uint8_t *bytes, int num_bytes) {
   uint64_t num = 0;
   for (int i = 0; i < num_bytes; i++) {
-    num = num << 8 + bytes[i];
+    num = (num << 8) + bytes[i];
   }
   return num;
 }
 
-uint8_t *ReadLengthEncodedInt(uint8_t *payload, uint64_t num) {
+uint8_t *ReadLengthEncodedInt(uint8_t *payload, uint64_t &num) {
   auto first_byte = *payload;
   payload++;
   int size_size = 0;
@@ -137,8 +137,9 @@ std::string Undoer::GetQueryFromUpdate(
   return undo_query + where_clause;
 }
 
-std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result, size_t size) {
+std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result) {
   Packet packet;
+  std::vector<std::string> values;
   uint8_t *payload = result.get();
   uint64_t field_count = 0;
   payload = ::GetFieldCount(payload, field_count);
@@ -152,9 +153,8 @@ std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result,
   if (packet.IsEof()) {
     return std::move(values);
   }
-  std::vector<std::string> values;
   std::string str;
-  uint8_t *cur = packet.data;
+  uint8_t *cur = packet.payload;
   for (uint64_t i = 0; i < field_count; i++) {
     cur = ::ReadLengthEncodedString(cur, str);
     values.push_back(str);
@@ -182,7 +182,7 @@ std::string Undoer::GetUpdateUndo(
   auto res = server_group_->GetResult(server);
   auto res_packet = std::unique_ptr<uint8_t[]>(new uint8_t[res.second]);
   memcpy(res_packet.get(), res.first, res.second);
-  auto values = ParseResults(std::move(res_packet), res.second);
+  auto values = ParseResults(std::move(res_packet));
   if (values.size() == 0) {
     return query;
   }

@@ -24,7 +24,7 @@ private:
     const std::string &query,
     const hsql::UpdateStatement *stmt,
     const std::vector<std::string> &values);
-  std::vector<std::string> ParseResults(std::unique_ptr<uint8_t[]> result, size_t size);
+  std::vector<std::string> ParseResults(std::unique_ptr<uint8_t[]> result);
   std::string GetSelectFromUpdate(const std::string &query,
                                   const hsql::UpdateStatement *stmt);
   std::string GetUpdateUndo(const std::string &query,

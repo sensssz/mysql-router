@@ -3,6 +3,9 @@
 
 #include "../server_group.h"
 
+#include "hsql/SQLParser.h"
+
+#include <vector>
 #include <unordered_map>
 
 class Undoer {

@@ -3,8 +3,6 @@
 #include "logger.h"
 #include <cstdint>
 
-#include "hsql/SQLParser.h"
-
 namespace {
 
 struct Packet {

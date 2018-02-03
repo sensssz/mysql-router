@@ -14,17 +14,7 @@ public:
   std::string GetUndoQuery(const std::string &query);
 
 private:
-  static std::unordered_map<std::string, std::vector<std::string>> kTablePkeys {
-    {"ITEM", {"i_id", "i_u_id"}},
-    {"ITEM_ATTRIBUTE", {"ia_id", "ia_i_id", "ia_u_id"}},
-    {"ITEM_BID", {"ib_id", "ib_i_id", "ib_u_id"}},
-    {"ITEM_COMMENT", {"ic_id", "ic_i_id", "ic_u_id"}},
-    {"ITEM_IMAGE", {"ii_id", "ii_i_id", "ii_u_id"}},
-    {"ITEM_MAX_BID", {"imb_i_id", "imb_u_id"}},
-    {"ITEM_PURCHASE", {"ip_id", "ip_ib_id", "ip_ib_i_id", "ip_ib_u_id"}},
-    {"USERACCT_FEEDBACK", {"uf_u_id", "uf_i_id", "uf_i_u_id", "uf_from_id"}},
-    {"USERACCT_ITEM", {"ui_u_id", "ui_i_id", "ui_i_u_id"}},
-};
+  static std::unordered_map<std::string, std::vector<std::string>> kTablePkeys;
 
   ServerGroup *server_group_;
 

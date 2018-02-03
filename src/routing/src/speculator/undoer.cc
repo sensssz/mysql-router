@@ -51,7 +51,7 @@ uint8_t *ReadLengthEncodedInt(uint8_t *payload, uint64_t &num) {
 uint8_t *ReadLengthEncodedString(uint8_t *payload, std::string &str) {
   uint64_t size;
   payload = ReadLengthEncodedInt(payload, size);
-  str = std::string(static_cast<char *>(payload), size);
+  str = std::string(reinterpret_cast<char *>(payload), size);
   return payload + size;
 }
 

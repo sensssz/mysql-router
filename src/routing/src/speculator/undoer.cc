@@ -79,6 +79,7 @@ std::unordered_map<std::string, std::vector<std::string>> Undoer::kTablePkeys {
 Undoer::Undoer(ServerGroup *server_group) : server_group_(server_group) {}
 
 std::string Undoer::GetUndoQuery(const std::string &query) {
+  log_debug("Generating undo for query %s", query.c_str());
   hsql::SQLParserResult result;
   hsql::SQLParser::parse(query, &result);
   auto stmt = result.getStatement(0);
@@ -93,6 +94,7 @@ std::string Undoer::GetUndoQuery(const std::string &query) {
 }
 
 std::string Undoer::GetInsertUndo(const hsql::InsertStatement *stmt) {
+  log_debug("Generating undo query for insert");
   auto table_name = std::string(stmt->tableName);
   auto &values = *(stmt->values);
   auto &pkeys = kTablePkeys[table_name];
@@ -102,6 +104,7 @@ std::string Undoer::GetInsertUndo(const hsql::InsertStatement *stmt) {
     auto val = std::to_string(values[i]->ival);
     undo_query += " AND " + key + "=" + val;
   }
+  log_debug("Undo is %s", undo_query.c_str());
   return undo_query;
 }
 
@@ -172,7 +175,9 @@ std::string Undoer::GetSelectFromUpdate(
 std::string Undoer::GetUpdateUndo(
   const std::string &query,
   const hsql::UpdateStatement *stmt) {
+  log_debug("Generating undo query for update");
   auto select = GetSelectFromUpdate(query, stmt);
+  log_debug("Select for update is %s", select.c_str());
   int server = server_group_->GetAvailableServer();
   if (!server_group_->SendQuery(server, select)) {
     log_error("Error sending select for update");
@@ -186,5 +191,7 @@ std::string Undoer::GetUpdateUndo(
   if (values.size() == 0) {
     return query;
   }
-  return GetQueryFromUpdate(query, stmt, values);
+  auto undo = GetQueryFromUpdate(query, stmt, values);
+  log_debug("New update for the update is %s", undo.c_str());
+  return undo;
 }

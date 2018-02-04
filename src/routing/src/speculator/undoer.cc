@@ -131,7 +131,7 @@ std::string Undoer::GetQueryFromUpdate(
       undo_query += "," + std::string(column);
     }
   }
-  undo_query += " FORM " + table_name;
+  undo_query += " FROM " + table_name;
   if (stmt->where == nullptr) {
     return undo_query;
   }

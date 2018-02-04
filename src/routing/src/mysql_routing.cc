@@ -233,6 +233,8 @@ bool DoSpeculation(
         if (undo.size() > 0) {
           query_to_send = undo + "; " + speculation;
           num_queries = 2;
+        } else {
+          query_to_send = speculation;
         }
         need_rollback[i] = false;
       }

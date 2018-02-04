@@ -21,12 +21,17 @@ LogSpeculator::LogSpeculator(Undoer &&undoer, const std::string &filename) :
   index_dist_ = std::uniform_int_distribution<int>(0, static_cast<int>(queries_.size() - 1));
 }
 
+void LogSpeculator::BackupFor(const std::string &query) {
+  undo_query_ = undoer_.GetUndoQuery(query);
+}
+
 std::string LogSpeculator::GetUndo() {
-  if (previous_write_ == -1) {
-    return "";
-  }
-  auto &speculation = queries_[previous_write_];
-  return undoer_.GetUndoQuery(speculation);
+  return undo_query_;
+  // if (previous_write_ == -1) {
+  //   return "";
+  // }
+  // auto &speculation = queries_[previous_write_];
+  // return undoer_.GetUndoQuery(speculation);
 }
 
 void LogSpeculator::CheckBegin(const std::string &query) {

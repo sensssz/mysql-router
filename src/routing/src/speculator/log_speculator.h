@@ -23,6 +23,7 @@ public:
   virtual void SetQueryIndex(int query_index) override {
     current_query_ = query_index;
   }
+  virtual void BackupFor(const std::string &query) override;
   virtual std::string GetUndo() override;
   virtual std::vector<std::string> Speculate(const std::string &query) override {
     return Speculate(query, 1);
@@ -34,6 +35,7 @@ public:
 private:
   std::vector<std::string> queries_;
   Undoer undoer_;
+  std::string next_undo_;
   bool start_;
   int current_query_;
   int previous_write_;

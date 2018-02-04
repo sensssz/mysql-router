@@ -151,7 +151,7 @@ std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result)
     payload = ReadNextPacket(payload, packet);
   }
   // Consume the EOF packet
-  payload = ReadNextPacket(payload, packet);
+  // payload = ReadNextPacket(payload, packet);
   payload = ReadNextPacket(payload, packet);
   if (packet.IsEof()) {
     return std::move(values);

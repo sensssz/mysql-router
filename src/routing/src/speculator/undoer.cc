@@ -82,6 +82,9 @@ std::string Undoer::GetUndoQuery(const std::string &query) {
   log_debug("Generating undo for query %s", query.c_str());
   hsql::SQLParserResult result;
   hsql::SQLParser::parse(query, &result);
+  if (!result.isValid() || result.size() == 0) {
+    return "";
+  }
   auto stmt = result.getStatement(0);
   switch (stmt->type()) {
   case hsql::kStmtInsert:

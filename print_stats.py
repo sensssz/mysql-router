@@ -70,34 +70,24 @@ def all_query_speedup(ori_latencies, sqp_latencies, aggregator):
 def calc_stats(ori_latencies, sqp_latencies, query_type):
   ''' Calculate stats about original latency and SQP latency
   '''
-  print '%s, Average, Per Query Speedup, %f' %\
+  print '%s, Per Query Speedup, %f, N/A, N/A, N/A' %\
         (query_type, per_query_speedup(ori_latencies, sqp_latencies))
-  print '%s, Average, Weighted Query Group Speedup, %f' %\
-        (query_type, weighted_query_group_speedup(
-            ori_latencies, sqp_latencies, np.mean))
-  print '%s, Average, All Query Speedup, %f' %\
-        (query_type, all_query_speedup(ori_latencies, sqp_latencies, np.mean))
-
-  print '%s, Median, Weighted Query Group Speedup, %f' %\
-        (query_type, weighted_query_group_speedup(
-            ori_latencies, sqp_latencies, np.median))
-  print '%s, Median, All Query Speedup, %f' %\
-        (query_type, all_query_speedup(
-            ori_latencies, sqp_latencies, np.median))
-
-  print '%s, 95th Percentile, Weighted Query Group Speedup, %f' %\
-        (query_type, weighted_query_group_speedup(
-            ori_latencies, sqp_latencies, lambda x: np.percentile(x, 95)))
-  print '%s, 95th Percentile, All Query Speedup, %f' %\
-        (query_type, all_query_speedup(
-            ori_latencies, sqp_latencies, lambda x: np.percentile(x, 95)))
-
-  print '%s, 99th Percentile, Weighted Query Group Speedup, %f' %\
-        (query_type, weighted_query_group_speedup(
-            ori_latencies, sqp_latencies, lambda x: np.percentile(x, 99)))
-  print '%s, 99th Percentile, All Query Speedup, %f' %\
-        (query_type, all_query_speedup(
-            ori_latencies, sqp_latencies, lambda x: np.percentile(x, 99)))
+  print '%s, Weighted Query Group Speedup, %f, %f, %f, %f' %\
+        (query_type,
+         weighted_query_group_speedup(
+             ori_latencies, sqp_latencies, np.mean),
+         weighted_query_group_speedup(
+             ori_latencies, sqp_latencies, np.median),
+         weighted_query_group_speedup(
+             ori_latencies, sqp_latencies, lambda x: np.percentile(x, 95)),
+         weighted_query_group_speedup(
+             ori_latencies, sqp_latencies, lambda x: np.percentile(x, 99)))
+  print '%s, All Query Speedup, %f, %f, %f, %f' %\
+        (query_type,
+         all_query_speedup(ori_latencies, sqp_latencies, np.mean),
+         all_query_speedup(ori_latencies, sqp_latencies, np.median),
+         all_query_speedup(ori_latencies, sqp_latencies, lambda x: np.percentile(x, 95)),
+         all_query_speedup(ori_latencies, sqp_latencies, lambda x: np.percentile(x, 99)))
 
 
 def calc_stats_for_query_types(latency_type, query_type, tag):
@@ -113,7 +103,7 @@ def calc_stats_for_query_types(latency_type, query_type, tag):
 def main(tag):
   ''' Main function
   '''
-  print 'Stat, Speedup Type, Query Type, Speedup of Speculation (x)'
+  print 'Stat, Speedup Type, Average, Median, 95th Percentile, 99th Percentile'
   calc_stats_for_query_types('server_query', 'Mixed', tag)
   calc_stats_for_query_types('read', 'Read', tag)
   calc_stats_for_query_types('write', 'Write', tag)

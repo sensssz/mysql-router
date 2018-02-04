@@ -208,9 +208,11 @@ bool DoSpeculation(
         }
         int num_queries = 1;
         if (need_rollback[i]) {
-          query_to_send = undo + speculation;
+          if (undo.size() > 0) {
+            query_to_send = undo + "; " + speculation;
+            num_queries = 2;
+          }
           need_rollback[i] = false;
-          num_queries = 2;
         }
         log_debug("Sending speculation %s to server %d", query_to_send.c_str(), i);
         if (!server_group->SendQuery(i, query_to_send, num_queries)) {
@@ -344,8 +346,10 @@ ssize_t HandleSpeculationMiss(ServerGroup *server_group,
     if (IsWrite(speculation.first)) {
       previous_is_write = true;
       SetNeedRollback(need_rollback, true);
-      query_to_send = undo + query;
-      num_queries = 2;
+      if (undo.size() > 0) {
+        query_to_send = undo + "; " + query;
+        num_queries = 2;
+      }
       break;
     }
   }

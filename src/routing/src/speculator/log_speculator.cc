@@ -26,7 +26,7 @@ std::string LogSpeculator::GetUndo() {
     return "";
   }
   auto &speculation = queries_[previous_write_];
-  return undoer_.GetUndoQuery(speculation) + ";";
+  return undoer_.GetUndoQuery(speculation);
 }
 
 void LogSpeculator::CheckBegin(const std::string &query) {

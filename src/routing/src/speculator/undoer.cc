@@ -181,7 +181,7 @@ std::string Undoer::GetUpdateUndo(
   int server = server_group_->GetAvailableServer();
   if (!server_group_->SendQuery(server, select)) {
     log_error("Error sending select for update");
-    return query;
+    return "";
   }
   server_group_->WaitForServer(server);
   auto res = server_group_->GetResult(server);
@@ -189,7 +189,7 @@ std::string Undoer::GetUpdateUndo(
   memcpy(res_packet.get(), res.first, res.second);
   auto values = ParseResults(std::move(res_packet));
   if (values.size() == 0) {
-    return query;
+    return "";
   }
   auto undo = GetQueryFromUpdate(query, stmt, values);
   log_debug("New update for the update is %s", undo.c_str());

@@ -22,11 +22,11 @@ LogSpeculator::LogSpeculator(Undoer &&undoer, const std::string &filename) :
 }
 
 void LogSpeculator::BackupFor(const std::string &query) {
-  undo_query_ = undoer_.GetUndoQuery(query);
+  next_undo_ = undoer_.GetUndoQuery(query);
 }
 
 std::string LogSpeculator::GetUndo() {
-  return undo_query_;
+  return next_undo_;
   // if (previous_write_ == -1) {
   //   return "";
   // }

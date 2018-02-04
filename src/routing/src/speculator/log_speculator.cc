@@ -64,8 +64,8 @@ std::vector<std::string> LogSpeculator::TrySpeculate(const std::string &query, i
   speculations_.clear();
   indices_.clear();
   int rand_num = dist_(rand_gen_);
-  if (rand_num <= 58) {
-    auto &next_query = queries_[current_query_ + 1];
+  auto &next_query = queries_[current_query_ + 1];
+  if (next_query == "BEGIN" || rand_num <= 58) {
     if (next_query.find("BEGIN") == std::string::npos &&
         next_query.find("COMMIT") == std::string::npos) {
       log_debug("Will make prediction hit with %s", next_query.c_str());

@@ -27,7 +27,8 @@ std::vector<Prediction *> Edge::FindMatchingPredictions(
   }
 
   auto &predictions = predictions_[path];
-  for (auto &prediction : predictions) {
+  for (size_t i = 0; i < predictions.Size(); i++) {
+    auto &prediction = predictions[i];
     if (prediction.MatchesQuery(previous_queries, query)) {
       matches.push_back(&prediction);
     }

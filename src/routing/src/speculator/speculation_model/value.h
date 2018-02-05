@@ -26,7 +26,7 @@ public:
   bool operator>(const double &other) const;
   friend std::ostream &operator<<(std::ostream &out, const Double &value);
 
-  std::string ToString() const const {
+  std::string ToString() const {
     return std::to_string(value_);
   }
 

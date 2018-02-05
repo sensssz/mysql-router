@@ -42,6 +42,15 @@ set(ROUTING_SOURCE_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/speculator/undoer.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/speculator/log_speculator.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/speculator/synthetic_speculator.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/routing/src/speculator/speculation_model/edge.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/routing/src/speculator/speculation_model/edge_list.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/routing/src/speculator/speculation_model/graph_model.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/routing/src/speculator/speculation_model/prediction.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/routing/src/speculator/speculation_model/predictor.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/routing/src/speculator/speculation_model/query.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/routing/src/speculator/speculation_model/query_parser.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/routing/src/speculator/speculation_model/query_window.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/routing/src/speculator/speculation_model/value.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/src/protocol/classic_protocol.cc
   ${ROUTING_SOURCE_FILES_X_PROTOCOL}
 )

@@ -13,6 +13,7 @@ namespace model {
 class Edge {
 public:
   Edge(int to);
+  Edge(int to, int weight);
   void IncWeight() {
     weight_++;
   }
@@ -23,8 +24,8 @@ public:
     const std::vector<Query> &previous_queries,
     const Query &query, const QueryPath &path);
 
-  void AddPredictions(const Query &query, const QueryPath &path,
-    std::vector<Prediction> &predictions);
+  void AddPredictions(const QueryPath &path,
+    std::vector<Prediction> &&predictions);
 
 private:
   int to_;

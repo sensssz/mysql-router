@@ -7,6 +7,7 @@ namespace model {
 
 class EdgeList {
 public:
+  void AddEdge(int query_id, Edge &&edge);
   std::shared_ptr<Edge> GetEdge(int query_id);
   std::shared_ptr<Prediction> FindBestPrediction(const QueryPath &path);
 

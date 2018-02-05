@@ -12,6 +12,7 @@ class UnaryOperation : public Operation {
 public:
   UnaryOperation(Operand &operand) : operand_(operand.Clone()) {}
   UnaryOperation(Operand *operand) : operand_(operand->Clone()) {}
+  UnaryOperation(std::unique_ptr<Operand> &&operand) : operand_(std::move(operand)) {}
 
   virtual SqlValue GetValue(const Window<Query> &trx) const {
     return operand_->GetValue(trx);

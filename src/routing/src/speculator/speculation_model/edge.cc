@@ -4,6 +4,8 @@ namespace model {
 
 Edge::Edge(int to) : to_(to), weight_(0) {}
 
+Edge(int to, int weight): to_(to), weight_(weight) {}
+
 std::shared_ptr<Prediction> Edge::FindBestMatchWithPath(const QueryPath &path) {
   Prediction *best = nullptr;
   auto &predictions = predictions_[path];
@@ -33,8 +35,8 @@ std::vector<Prediction *> Edge::FindMatchingPredictions(
   return std::move(matches);
 }
 
-void Edge::AddPredictions(const Query &query, const QueryPath &path,
-  std::vector<Prediction> &predictions) {
+void Edge::AddPredictions(const QueryPath &path,
+  std::vector<Prediction> &&predictions) {
   auto &predictions_of_path = predictions_[path];
   for (auto &prediction : predictions) {
     predictions_of_path.push_back(std::move(prediction));

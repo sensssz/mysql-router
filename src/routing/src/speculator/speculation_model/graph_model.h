@@ -16,7 +16,7 @@ class GraphModel {
 public:
   GraphModel(std::shared_ptr<QueryManager> manager) : manager_(manager) {}
 
-  void Load(const std::string &filename);
+  void Load(const std::string &query_set, const std::string &model);
 
   EdgeList *GetEdgeList(int query_id) {
     return &vertex_edges_[query_id];

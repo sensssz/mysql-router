@@ -2,6 +2,10 @@
 
 namespace model {
 
+void EdgeList::AddEdge(int query_id, Edge &&edge) {
+  edges_[query_id] = std::move(edge);
+}
+
 std::shared_ptr<Edge> EdgeList::GetEdge(int query_id) {
   auto iter = edges_.find(query_id);
   if (iter == edges_.end()) {

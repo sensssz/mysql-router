@@ -3,11 +3,14 @@
 
 #include "operation.h"
 
+#include <memory>
+
 namespace model {
 
 class Prediction {
 public:
-  Prediction(int query_id, std::vector<Operation> &&param_ops);
+  Prediction(int query_id, std::vector<std::unique_ptr<Operation>> &&param_ops);
+  Prediction(int query_id, int hit, std::vector<std::unique_ptr<Operation>> &&param_ops);
 
   bool MatchesQuery(const Window<Query> &trx, const Query &query);
 
@@ -19,7 +22,7 @@ public:
     return query_id_;
   }
 
-  const std::vector<Operation> &param_ops() const {
+  const std::vector<std::unique_ptr<Operation>> &param_ops() const {
     return param_ops_;
   }
 
@@ -29,7 +32,7 @@ public:
 
 private:
   int query_id_;
-  std::vector<Operation> param_ops_;
+  std::vector<std::unique_ptr<Operation>> param_ops_;
   int hit_count_;
 };
 

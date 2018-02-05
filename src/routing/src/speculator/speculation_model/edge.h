@@ -21,16 +21,16 @@ public:
   std::shared_ptr<Prediction> FindBestMatchWithPath(const QueryPath &path);
 
   std::vector<Prediction *> FindMatchingPredictions(
-    const std::vector<Query> &previous_queries,
+    const Window<Query> &previous_queries,
     const Query &query, const QueryPath &path);
 
   void AddPredictions(const QueryPath &path,
-    std::vector<Prediction> &&predictions);
+    const std::vector<Prediction> &predictions);
 
 private:
   int to_;
   int weight_;
-  std::unordered_map<QueryPath, std::vector<Prediction>> predictions_;
+  std::unordered_map<QueryPath, Window<Prediction>> predictions_;
 };
 
 } // namespace model

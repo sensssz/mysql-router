@@ -11,6 +11,18 @@ static const int kLookBackLen = 7;
 
 using QueryPath = std::array<int, kLookBackLen>;
 
+namespace std {
+  template<> struct hash<QueryPath> {
+    size_t operator()(const QueryPath &path) const {
+      sizs_t hash_val = 0;
+      for (int i = 0; i < kLookBackLen; i++) {
+        hash_val = hash_val ^ path[i];
+      }
+      return hash_val;
+    }
+  };
+};
+
 class QueryWindow : public Window<int> {
 public:
   QueryWindow();

@@ -94,7 +94,7 @@ public:
     return IsIntList() || IsDoubleList() || IsStringList();
   }
 
-  std::string ToString() const const;
+  std::string ToString() const;
   bool operator==(const SqlValue &other) const;
   bool operator<(const SqlValue &other) const;
 };

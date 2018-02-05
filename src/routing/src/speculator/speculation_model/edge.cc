@@ -9,7 +9,8 @@ Edge::Edge(int to, int weight): to_(to), weight_(weight) {}
 std::shared_ptr<Prediction> Edge::FindBestMatchWithPath(const QueryPath &path) {
   Prediction *best = nullptr;
   auto &predictions = predictions_[path];
-  for (auto &prediction : predictions) {
+  for (size_t i = 0; i < predictions.Size(); i++) {
+    auto &prediction = predictions[i];
     if (best == nullptr ||
         prediction.hit_count() > best->hit_count()) {
       best = &prediction;

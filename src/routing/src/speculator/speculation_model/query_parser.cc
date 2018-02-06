@@ -53,14 +53,14 @@ static const std::string kRegexNumStr = R"((?<!OFFSET |LIMIT )('[^']*'|\b\d+(\.\
 static const std::string kRegexString = R"(\'[^']*')";
 static const std::string kRegexNumber = R"(\b\d+(\.\d+)?\b)";
 static const std::string kRegexStrList = R"(IN \(([^)']+)\))";
-static const std::string kRegexStrList = R"(IN \(([^)0-9]+)\))";
+static const std::string kRegexNumList = R"(IN \(([^)0-9]+)\))";
 
-std::regex QueryParser::argument_pattern_ = std::regex("", std::regex_constants::extended | std::regex_constants::optimize);
-std::regex QueryParser::num_str_pattern_ = std::regex("", std::regex_constants::extended | std::regex_constants::optimize);
-std::regex QueryParser::string_pattern_ = std::regex("", std::regex_constants::extended | std::regex_constants::optimize);
-std::regex QueryParser::number_pattern_ = std::regex("", std::regex_constants::extended | std::regex_constants::optimize);
-std::regex QueryParser::str_list_pattern_ = std::regex("", std::regex_constants::extended | std::regex_constants::optimize);
-std::regex QueryParser::num_list_pattern_ = std::regex("", std::regex_constants::extended | std::regex_constants::optimize);
+std::regex QueryParser::argument_pattern_ = std::regex(kRegexArgument, std::regex_constants::optimize);
+std::regex QueryParser::num_str_pattern_ = std::regex(kRegexNumStr, std::regex_constants::optimize);
+std::regex QueryParser::string_pattern_ = std::regex(kRegexString, std::regex_constants::optimize);
+std::regex QueryParser::number_pattern_ = std::regex(kRegexNumber, std::regex_constants::optimize);
+std::regex QueryParser::str_list_pattern_ = std::regex(kRegexStrList, std::regex_constants::optimize);
+std::regex QueryParser::num_list_pattern_ = std::regex(kRegexNumList, std::regex_constants::optimize);
 
 Query QueryParser::ParseQuery(const std::string &json) {
   rjson::Document document;

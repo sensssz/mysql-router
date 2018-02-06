@@ -95,6 +95,7 @@ std::string SqlValue::ToString() const {
   } else if (IsStringList()) {
     return ListToString(boost::get<StringList>(*this), ",");
   }
+  return "";
 }
 
 bool SqlValue::operator==(const SqlValue &other) const {

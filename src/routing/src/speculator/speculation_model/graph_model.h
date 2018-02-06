@@ -22,9 +22,7 @@ public:
     return &vertex_edges_[query_id];
   }
 
-  Predictor CreatePredictor() {
-    return Predictor(std::shared_ptr<GraphModel>(this), manager_);
-  }
+  std::unique_ptr<Predictor> CreatePredictor();
 
 private:
   std::shared_ptr<QueryManager> manager_;

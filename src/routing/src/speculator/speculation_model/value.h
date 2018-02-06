@@ -63,7 +63,7 @@ public:
   SqlValue(const SqlValue &val) = default;
   SqlValue(SqlValue &&val) = default;
   template<typename T>
-  SqlValue(T &&value) : BoostVariant(value) {}
+  SqlValue(T value) : BoostVariant(value) {}
   SqlValue(double value) : BoostVariant(Double(value)) {}
 
   Type type() const {

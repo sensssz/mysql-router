@@ -152,9 +152,14 @@ void GraphModel::Load(const std::string &query_set, const std::string &model) {
   for (rjson::SizeType i = 0; i < document.Size(); i++) {
     auto &vertex_edge = document[i];
     auto vertex = vertex_edge["vertex"].GetInt();
-    auto edge_list = CreateEdgeList(vertex_edge["edgelist"]);
+    auto edge_list = ::CreateEdgeList(vertex_edge["edgelist"]);
     vertex_edges_[vertex] = std::move(edge_list);
   }
+}
+
+std::unique_ptr<Predictor> GraphModel::CreatePredictor() {
+  return std::unique_ptr<Predictor>(
+    new Predictor(std::shared_ptr<GraphModel>(this), manager_));
 }
 
 } // namespace model

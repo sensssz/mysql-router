@@ -27,10 +27,10 @@ std::unique_ptr<Query> Predictor::PredictNextQuery() {
   }
   std::vector<SqlValue> arguments;
   for (auto &operation : best_match->param_ops()) {
-    arguments.push_back(operation.GetValue(history_));
+    arguments.push_back(operation->GetValue(history_));
   }
   std::vector<std::vector<SqlValue>> result_set;
-  return Query(best_match->query_id(), arguments, std::move(result_set));
+  return new Query(best_match->query_id(), arguments, std::move(result_set));
 }
 
 void Predictor::MoveToNext(Query &&query) {

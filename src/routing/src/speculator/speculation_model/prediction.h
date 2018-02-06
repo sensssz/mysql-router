@@ -32,8 +32,8 @@ public:
 
 private:
   int query_id_;
-  std::vector<std::unique_ptr<Operation>> param_ops_;
   int hit_count_;
+  std::vector<std::unique_ptr<Operation>> param_ops_;
 };
 
 } // namespace model

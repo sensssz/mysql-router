@@ -13,7 +13,7 @@ bool Prediction::MatchesQuery(const Window<Query> &trx, const Query &query) {
     return false;
   }
   for (size_t i = 0; i < query.arguments().size(); i++) {
-    if (!param_ops_[i]->MatchesValue(trx, query.arguments[i])) {
+    if (!param_ops_[i]->MatchesValue(trx, query.arguments()[i])) {
       return false;
     }
   }

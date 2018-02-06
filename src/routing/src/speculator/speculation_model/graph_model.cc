@@ -145,12 +145,12 @@ namespace model {
 
 void GraphModel::Load(const std::string &query_set, const std::string &model) {
   manager_->Load(query_set);
-  std::ifstream infile(filename);
+  std::ifstream infile(model);
   std::string content((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>());
   rjson::Document document;
   document.Parse(content.c_str());
   for (rjson::SizeType i = 0; i < document.Size(); i++) {
-    auto vertex_edge = document[i];
+    auto &vertex_edge = document[i];
     auto vertex = vertex_edge["vertex"].GetInt();
     auto edge_list = CreateEdgeList(vertex_edge["edgelist"]);
     vertex_edges_[vertex] = std::move(edge_list);

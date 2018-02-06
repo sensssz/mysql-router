@@ -5,7 +5,7 @@
 
 #include <cassert>
 
-using namespace rjson=rapidjson;
+namespace rjson=rapidjson;
 
 namespace {
 

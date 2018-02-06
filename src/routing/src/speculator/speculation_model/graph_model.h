@@ -23,7 +23,7 @@ public:
   }
 
   Predictor CreatePredictor() {
-    return Predictor(this, manager_);
+    return Predictor(std::shared_ptr<GraphModel>(this), manager_);
   }
 
 private:

@@ -4,7 +4,7 @@ namespace model {
 
 Edge::Edge(int to) : to_(to), weight_(0) {}
 
-Edge(int to, int weight): to_(to), weight_(weight) {}
+Edge::Edge(int to, int weight): to_(to), weight_(weight) {}
 
 std::shared_ptr<Prediction> Edge::FindBestMatchWithPath(const QueryPath &path) {
   Prediction *best = nullptr;

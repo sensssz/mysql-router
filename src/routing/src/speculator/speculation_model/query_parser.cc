@@ -48,8 +48,8 @@ static inline std::string trim(std::string s) {
   return s;
 }
 
-static const std::string kRegexArgument = R"((?<!OFFSET |LIMIT )(IN \([^)]+\)|'[^']*'|\b\d+(\.\d+)?\b))";
-static const std::string kRegexNumStr = R"((?<!OFFSET |LIMIT )('[^']*'|\b\d+(\.\d+)?\b))";
+static const std::string kRegexArgument = R"((?<!OFFSET )(?<!LIMIT )(IN \([^)]+\)|'[^']*'|\b\d+(\.\d+)?\b))";
+static const std::string kRegexNumStr = R"((?<!OFFSET )(?<!LIMIT )('[^']*'|\b\d+(\.\d+)?\b))";
 static const std::string kRegexString = R"(\'[^']*')";
 static const std::string kRegexNumber = R"(\b\d+(\.\d+)?\b)";
 static const std::string kRegexStrList = R"(IN \(([^)']+)\))";

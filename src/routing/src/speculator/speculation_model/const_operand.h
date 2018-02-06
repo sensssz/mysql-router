@@ -7,8 +7,8 @@ namespace model {
 
 class ConstOperand : public Operand {
 public:
-  // ConstOperand(SqlValue value) : value_(std::move(value)) {}
-  ConstOperand(SqlValue &&value) : value_(std::move(value)) {}
+  ConstOperand(SqlValue value) : value_(std::move(value)) {}
+  // ConstOperand(SqlValue &&value) : value_(std::move(value)) {}
 
   virtual void SetQueryIndex(int query_index) {}
 

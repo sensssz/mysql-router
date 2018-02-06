@@ -12,7 +12,7 @@ public:
   Prediction(int query_id, std::vector<std::unique_ptr<Operation>> &&param_ops);
   Prediction(int query_id, int hit, std::vector<std::unique_ptr<Operation>> &&param_ops);
 
-  bool MatchesQuery(const std::vector<Query> &trx, const Query &query);
+  bool MatchesQuery(const Window<Query> &trx, const Query &query);
 
   void Hit() {
     hit_count_++;

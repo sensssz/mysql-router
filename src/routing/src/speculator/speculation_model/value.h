@@ -40,9 +40,9 @@ bool operator<(const double &lhs, const Double &rhs);
 bool operator>(const double &lhs, const Double &rhs);
 
 using Bool = bool;
-using Int = int64_t;
+using Int = int;
 using String = std::string;
-using IntList = std::set<int64_t>;
+using IntList = std::set<int>;
 using DoubleList = std::set<Double>;
 using StringList = std::set<std::string>;
 using BoostVariant = boost::variant<Null, Bool, Int, Double, String, IntList, DoubleList, StringList>;
@@ -60,8 +60,11 @@ public:
     kStringList = 7,
   };
   SqlValue() = default;
+  SqlValue(const SqlValue &val) = default;
+  SqlValue(SqlValue &&val) = default;
   template<typename T>
-  SqlValue(T &&value) : BoostVariant(std::move(value)) {}
+  SqlValue(T &&value) : BoostVariant(value) {}
+  SqlValue(double value) : BoostVariant(Double(value)) {}
 
   Type type() const {
     return static_cast<Type>(which());
@@ -95,6 +98,7 @@ public:
   }
 
   std::string ToString() const;
+  SqlValue &operator=(const SqlValue &val) = default;
   bool operator==(const SqlValue &other) const;
   bool operator<(const SqlValue &other) const;
 };

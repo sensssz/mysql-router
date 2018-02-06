@@ -4,7 +4,7 @@
 #include "query.h"
 
 #include <fstream>
-#include <regex>
+#include <boost/regex.hpp>
 
 namespace model {
 
@@ -13,17 +13,17 @@ public:
   Query ParseQuery(const std::string &json);
 
 private:
-  std::vector<std::string> RegexFindAll(const std::regex &regex, std::string str);
+  std::vector<std::string> RegexFindAll(const boost::regex &regex, std::string str);
   SqlValue CreateListValue(const std::vector<std::string> &values);
   std::vector<SqlValue> ConvertArguments(const std::vector<std::string> &args);
   std::string ExtractTemplate(const std::string &sql);
 
-  static std::regex argument_pattern_;
-  static std::regex num_str_pattern_;
-  static std::regex string_pattern_;
-  static std::regex number_pattern_;
-  static std::regex str_list_pattern_;
-  static std::regex num_list_pattern_;
+  static boost::regex argument_pattern_;
+  static boost::regex num_str_pattern_;
+  static boost::regex string_pattern_;
+  static boost::regex number_pattern_;
+  static boost::regex str_list_pattern_;
+  static boost::regex num_list_pattern_;
 };
 
 

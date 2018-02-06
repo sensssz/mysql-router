@@ -55,12 +55,12 @@ static const std::string kRegexNumber = R"(\b\d+(\.\d+)?\b)";
 static const std::string kRegexStrList = R"(IN \(([^)']+)\))";
 static const std::string kRegexNumList = R"(IN \(([^)0-9]+)\))";
 
-std::regex QueryParser::argument_pattern_ = std::regex(kRegexArgument, std::regex_constants::optimize);
-std::regex QueryParser::num_str_pattern_ = std::regex(kRegexNumStr, std::regex_constants::optimize);
-std::regex QueryParser::string_pattern_ = std::regex(kRegexString, std::regex_constants::optimize);
-std::regex QueryParser::number_pattern_ = std::regex(kRegexNumber, std::regex_constants::optimize);
-std::regex QueryParser::str_list_pattern_ = std::regex(kRegexStrList, std::regex_constants::optimize);
-std::regex QueryParser::num_list_pattern_ = std::regex(kRegexNumList, std::regex_constants::optimize);
+boost::regex QueryParser::argument_pattern_ = boost::regex(kRegexArgument);
+boost::regex QueryParser::num_str_pattern_ = boost::regex(kRegexNumStr);
+boost::regex QueryParser::string_pattern_ = boost::regex(kRegexString);
+boost::regex QueryParser::number_pattern_ = boost::regex(kRegexNumber);
+boost::regex QueryParser::str_list_pattern_ = boost::regex(kRegexStrList);
+boost::regex QueryParser::num_list_pattern_ = boost::regex(kRegexNumList);
 
 Query QueryParser::ParseQuery(const std::string &json) {
   rjson::Document document;
@@ -82,10 +82,10 @@ Query QueryParser::ParseQuery(const std::string &json) {
   return Query(query_id, std::move(args), std::move(results));
 }
 
-std::vector<std::string> QueryParser::RegexFindAll(const std::regex &regex, std::string str) {
+std::vector<std::string> QueryParser::RegexFindAll(const boost::regex &regex, std::string str) {
   std::vector<std::string> all_matches;
-  for (std::sregex_iterator iter(str.begin(), str.end(), regex), end; iter != end; iter++) {
-    all_matches.push_back(iter->str());
+  for (boost::sregex_iterator iter(str.begin(), str.end(), regex, 0), end; iter != end; iter++) {
+    all_matches.push_back(*iter);
   }
   return std::move(all_matches);
 }
@@ -125,10 +125,10 @@ std::vector<SqlValue> QueryParser::ConvertArguments(const std::vector<std::strin
 
 std::string QueryParser::ExtractTemplate(const std::string &sql) {
   std::string sql_template = trim(sql);
-  sql_template = std::regex_replace(sql_template, string_pattern_, "?v");
-  sql_template = std::regex_replace(sql_template, number_pattern_, "?v");
-  sql_template = std::regex_replace(sql_template, str_list_pattern_, "?v");
-  sql_template = std::regex_replace(sql_template, num_list_pattern_, "?v");
+  sql_template = boost::regex_replace(sql_template, string_pattern_, "?v", boost::match_default | boost::format_all);
+  sql_template = boost::regex_replace(sql_template, number_pattern_, "?v", boost::match_default | boost::format_all);
+  sql_template = boost::regex_replace(sql_template, str_list_pattern_, "?v", boost::match_default | boost::format_all);
+  sql_template = boost::regex_replace(sql_template, num_list_pattern_, "?v", boost::match_default | boost::format_all);
   return std::move(sql_template);
 }
 

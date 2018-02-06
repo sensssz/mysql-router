@@ -84,8 +84,8 @@ Query QueryParser::ParseQuery(const std::string &json) {
 
 std::vector<std::string> QueryParser::RegexFindAll(const boost::regex &regex, std::string str) {
   std::vector<std::string> all_matches;
-  for (boost::sregex_iterator iter(str.begin(), str.end(), regex, 0), end; iter != end; iter++) {
-    all_matches.push_back(*iter);
+  for (boost::sregex_iterator iter(str.begin(), str.end(), regex), end; iter != end; iter++) {
+    all_matches.push_back(iter->str());
   }
   return std::move(all_matches);
 }

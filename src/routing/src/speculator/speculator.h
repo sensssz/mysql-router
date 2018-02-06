@@ -16,7 +16,6 @@ public:
   virtual std::vector<std::string> Speculate(const std::string &query) = 0;
   virtual std::vector<std::string> Speculate(const std::string &query, int num_speculations) = 0;
   virtual std::vector<std::string> TrySpeculate(const std::string &query, int num_speculations) = 0;
-  virtual std::vector<int> GetSpeculationIndices() = 0;
 };
 
 #endif // SPECULATOR_SPECULATOR_H_

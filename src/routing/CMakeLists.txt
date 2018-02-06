@@ -97,7 +97,7 @@ add_compile_options(-std=c++17)
 
 find_package(rdma REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS regex)
 
 link_directories(${CMAKE_BINARY_DIR}/ext/protobuf/protobuf-3.0.0/cmake/)
 # The Plugin

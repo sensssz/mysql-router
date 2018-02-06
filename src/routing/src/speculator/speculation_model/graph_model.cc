@@ -99,9 +99,9 @@ std::unique_ptr<model::Operation> CreateOperation(const rjson::Value &obj) {
     new model::UnaryOperation(CreateOperand(obj)));
 }
 
-std::vector<std::unique_ptr<model::Operand>> CreatePredictions(const rjson::Value &obj) {
+std::vector<model::Prediction> CreatePredictions(const rjson::Value &obj) {
   assert(obj.IsArray());
-  std::vector<std::unique_ptr<model::Operand>> predictions;
+  std::vector<model::Prediction> predictions;
   for (rjson::SizeType i = 0; i < obj.Size(); i++) {
     auto &prediction = obj[i];
     int query = prediction["query"].GetInt();
@@ -129,9 +129,9 @@ model::EdgeList CreateEdgeList(const rjson::Value &obj) {
   assert(obj.IsArray());
   model::EdgeList edge_list;
   for (rjson::SizeType i = 0; i < obj.Size(); i++) {
-    auto pair = obj[i];
+    auto &pair = obj[i];
     auto vertex = pair["vertex"].GetInt();
-    auto edge_obj = pair["edge"];
+    auto &edge_obj = pair["edge"];
     model::Edge edge(edge_obj["to"].GetInt(), edge_obj["weight"].GetInt());
     FillPredictions(edge_obj["prediction_map"], edge);
     edge_list.AddEdge(vertex, std::move(edge));
@@ -148,7 +148,7 @@ void GraphModel::Load(const std::string &query_set, const std::string &model) {
   std::ifstream infile(filename);
   std::string content((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>());
   rjson::Document document;
-  document.Parse(content);
+  document.Parse(content.c_str());
   for (rjson::SizeType i = 0; i < document.Size(); i++) {
     auto vertex_edge = document[i];
     auto vertex = vertex_edge["vertex"].GetInt();

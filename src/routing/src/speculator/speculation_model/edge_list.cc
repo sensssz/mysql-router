@@ -10,7 +10,7 @@ std::shared_ptr<Edge> EdgeList::GetEdge(int query_id) {
   auto iter = edges_.find(query_id);
   if (iter == edges_.end()) {
     edges_.insert(std::make_pair(query_id, Edge(query_id)));
-    return std::shared_ptr<Edge>(&edges_[query_id]);
+    return std::shared_ptr<Edge>(&edges_.at(query_id));
   } else {
     return std::shared_ptr<Edge>(&iter->second);
   }

@@ -97,13 +97,19 @@ add_compile_options(-std=c++17)
 
 find_package(rdma REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(Boost REQUIRED)
 
 link_directories(${CMAKE_BINARY_DIR}/ext/protobuf/protobuf-3.0.0/cmake/)
 # The Plugin
 add_harness_plugin(routing
         SOURCES ${ROUTING_PLUGIN_SOURCE_FILES} ${ROUTING_SOURCE_FILES}
         REQUIRES logger mysql_protocol x_protocol metadata_cache)
-target_include_directories(routing PRIVATE ${include_dirs} ${RDMA_INCLUDE_DIR} ${OPENSSL_LIBRARIES})
+target_include_directories(
+  routing PRIVATE
+  ${include_dirs}
+  ${RDMA_INCLUDE_DIR}
+  ${OPENSSL_LIBRARIES}
+  ${Boost_INCLUDE_DIRS})
 
 if(MSVC)
   add_compile_flags(${PROTO_SRCS} COMPILE_FLAGS "/wd4018")
@@ -114,7 +120,13 @@ else()
                     "-include mysqlrouter/xprotocol.h")
 endif(MSVC)
 
-target_link_libraries(routing PRIVATE ${PB_LIBRARY} ${RDMA_LIBRARIES} ${IBVERBS_LIBRARY} ${OPENSSL_LIBRARIES} ${HSQL_LIBRARY})
+target_link_libraries(routing PRIVATE
+  ${PB_LIBRARY}
+  ${RDMA_LIBRARIES}
+  ${IBVERBS_LIBRARY}
+  ${OPENSSL_LIBRARIES}
+  ${HSQL_LIBRARY}
+  ${Boost_LIBRARIES})
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
   target_link_libraries(routing PRIVATE -lnsl PRIVATE -lsocket)

@@ -28,7 +28,7 @@ model::SqlValue GetValue(const rjson::Value &obj) {
   if (obj.IsInt()) {
     return model::SqlValue(obj.GetInt());
   } else if (obj.IsString()) {
-    return model::SqlValue(obj.GetString());
+    return model::SqlValue(std::string(obj.GetString()));
   } else if (obj.IsDouble()) {
     return model::SqlValue(obj.GetDouble());
   } else if (obj.IsBool()) {
@@ -72,10 +72,10 @@ std::unique_ptr<model::Operand> CreateColumnListOperand(const rjson::Value &obj)
 
 std::unique_ptr<model::Operand> CreateOperand(const rjson::Value &obj) {
   assert(obj.IsObject());
-  auto type = obj["type"].GetString();
+  auto type = std::string(obj["type"].GetString());
   if (type == "const") {
     return std::unique_ptr<model::Operand>(
-      new model::ConstOperand(GetValue(obj["value"])));
+      new model::ConstOperand(std::move(GetValue(obj["value"]))));
   } else if (type == "result") {
     return CreateQueryResultOperand(obj);
   } else if (type == "arg") {
@@ -91,7 +91,7 @@ std::unique_ptr<model::Operand> CreateOperand(const rjson::Value &obj) {
 
 std::unique_ptr<model::Operation> CreateOperation(const rjson::Value &obj) {
   assert(obj.IsObject());
-  if (obj["type"].GetString() == "rand") {
+  if (std::string(obj["type"].GetString()) == "rand") {
     return std::unique_ptr<model::Operation>(
       new model::RandomOperation());
   }
@@ -107,7 +107,7 @@ std::vector<std::unique_ptr<model::Operand>> CreatePredictions(const rjson::Valu
     int query = prediction["query"].GetInt();
     int hit = prediction["hit"].GetInt();
     auto ops = prediction["ops"];
-    std::vector<std::unique_ptr<model::Operation>> operands;
+    std::vector<std::unique_ptr<model::Operand>> operands;
     for (rjson::SizeType j = 0; j < ops.Size(); j++) {
       operands.push_back(std::move(CreateOperand(ops[j])));
     }
@@ -118,7 +118,7 @@ std::vector<std::unique_ptr<model::Operand>> CreatePredictions(const rjson::Valu
 
 void FillPredictions(const rjson::Value &obj, model::Edge &edge) {
   assert(obj.IsArray());
-  for (auto &mapping : obj) {
+  for (auto &mapping : obj.GetArray()) {
     auto path = CreateQueryPath(mapping["path"]);
     auto predictions = CreatePredictions(mapping["predictions"]);
     edge.AddPredictions(path, std::move(predictions));
@@ -129,8 +129,9 @@ model::EdgeList CreateEdgeList(const rjson::Value &obj) {
   assert(obj.IsArray());
   model::EdgeList edge_list;
   for (rjson::SizeType i = 0; i < obj.Size(); i++) {
-    auto vertex = obj["vertex"].GetInt();
-    auto edge_obj = obj["edge"];
+    auto pair = obj[i];
+    auto vertex = pair["vertex"].GetInt();
+    auto edge_obj = pair["edge"];
     model::Edge edge(edge_obj["to"].GetInt(), edge_obj["weight"].GetInt());
     FillPredictions(edge_obj["prediction_map"], edge);
     edge_list.AddEdge(vertex, std::move(edge));

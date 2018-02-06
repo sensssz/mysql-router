@@ -23,7 +23,7 @@ public:
     assert(query_index_ < trx.Size());
     auto &query = trx[query_index_];
     assert(query_id_ == query.query_id());
-    if (row_index_ >= query.result_set().size()) {
+    if (static_cast<size_t>(row_index_) >= query.result_set().size()) {
       return SqlValue();
     }
     return query.result_set()[row_index_][column_index_];

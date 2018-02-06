@@ -28,7 +28,7 @@ public:
 
   virtual std::string ToString() const {
     std::stringstream ss;
-    ss << "Query" << query_id_ << '(' << arg_index_ << 'l)';
+    ss << "Query" << query_id_ << '(' << arg_index_ << "l)";
     return ss.str();
   }
 

@@ -36,7 +36,7 @@ std::shared_ptr<Prediction> Edge::FindBestMatchWithPath(const QueryPath &path) {
 // }
 
 void Edge::AddPredictions(const QueryPath &path,
-  std::vector<Prediction> &predictions) {
+  std::vector<Prediction> &&predictions) {
   auto &predictions_of_path = predictions_[path];
   for (auto &prediction : predictions) {
     predictions_of_path.push_back(std::move(prediction));

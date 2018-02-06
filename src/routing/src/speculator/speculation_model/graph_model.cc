@@ -103,15 +103,15 @@ std::vector<std::unique_ptr<model::Operand>> CreatePredictions(const rjson::Valu
   assert(obj.IsArray());
   std::vector<std::unique_ptr<model::Operand>> predictions;
   for (rjson::SizeType i = 0; i < obj.Size(); i++) {
-    auto prediction = obj[i];
+    auto &prediction = obj[i];
     int query = prediction["query"].GetInt();
     int hit = prediction["hit"].GetInt();
-    auto ops = prediction["ops"];
-    std::vector<std::unique_ptr<model::Operand>> operands;
+    auto &ops = prediction["ops"];
+    std::vector<std::unique_ptr<model::Operation>> operations;
     for (rjson::SizeType j = 0; j < ops.Size(); j++) {
-      operands.push_back(std::move(CreateOperand(ops[j])));
+      operations.push_back(std::move(CreateOperation(ops[j])));
     }
-    predictions.push_back(model::Prediction(query, hit, std::move(operands)));
+    predictions.push_back(model::Prediction(query, hit, std::move(operations)));
   }
   return std::move(predictions);
 }

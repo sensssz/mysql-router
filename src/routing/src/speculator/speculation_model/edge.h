@@ -25,7 +25,7 @@ public:
   //   const Query &query, const QueryPath &path);
 
   void AddPredictions(const QueryPath &path,
-    std::vector<Prediction> &predictions);
+    std::vector<Prediction> &&predictions);
 
 private:
   int to_;

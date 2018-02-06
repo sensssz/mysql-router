@@ -1,4 +1,11 @@
 #include "graph_model.h"
+#include "random_operation.h"
+#include "unary_operation.h"
+#include "const_operand.h"
+#include "query_result_operand.h"
+#include "query_argument_operand.h"
+#include "argument_list_operand.h"
+#include "column_list_operand.h"
 #include "rapidjson/document.h"
 
 #include <fstream>
@@ -10,7 +17,7 @@ namespace rjson=rapidjson;
 namespace {
 
 model::QueryPath CreateQueryPath(const rjson::Value &obj) {
-  QueryPath path;
+  model::QueryPath path;
   for (rjson::SizeType i = 0; i < obj.Size(); i++) {
     path[i] = obj[i].GetInt();
   }
@@ -27,7 +34,7 @@ model::SqlValue GetValue(const rjson::Value &obj) {
   } else if (obj.IsBool()) {
     return model::SqlValue(obj.GetBool());
   }
-  return SqlValue();
+  return model::SqlValue();
 }
 
 std::unique_ptr<model::Operand> CreateQueryResultOperand(const rjson::Value &obj) {
@@ -35,7 +42,7 @@ std::unique_ptr<model::Operand> CreateQueryResultOperand(const rjson::Value &obj
   int query_index = obj["index"].GetInt();
   int row = obj["row"].GetInt();
   int column = obj["column"].GetInt();
-  return new model::QueryresultOperand(query_id, query_index, row, column);
+  return new model::QueryResultOperand(query_id, query_index, row, column);
 }
 
 std::unique_ptr<model::Operand> CreateQueryArgumentOperand(const rjson::Value &obj) {
@@ -61,9 +68,9 @@ std::unique_ptr<model::Operand> CreateColumnListOperand(const rjson::Value &obj)
 
 std::unique_ptr<model::Operand> CreateOperand(const rjson::Value &obj) {
   assert(obj.IsObject());
-  auto type = obj["type"];
+  auto type = obj["type"].GetString();
   if (type == "const") {
-    return new ConstOperand(GetValue(obj["value"]));
+    return new model::ConstOperand(GetValue(obj["value"]));
   } else if (type == "result") {
     return CreateQueryResultOperand(obj);
   } else if (type == "arg") {
@@ -73,7 +80,7 @@ std::unique_ptr<model::Operand> CreateOperand(const rjson::Value &obj) {
   } else if (type == "columnlist") {
     return CreateColumnListOperand(obj);
   }
-  return new ConstOperand(model::SqlValue());
+  return new model::ConstOperand(model::SqlValue());
 }
 
 std::unique_ptr<model::Operation> CreateOperation(const rjson::Value &obj) {
@@ -84,9 +91,9 @@ std::unique_ptr<model::Operation> CreateOperation(const rjson::Value &obj) {
   return new model::UnaryOperand(CreateOperand(obj));
 }
 
-std::vector<model::Prediction> CreatePredictions(const rjson::Value &obj) {
+std::vector<std::unique_ptr<model::Operand>> CreatePredictions(const rjson::Value &obj) {
   assert(obj.IsArray());
-  std::vector<model::Prediction> predictions;
+  std::vector<std::unique_ptr<model::Operand>> predictions;
   for (rjson::SizeType i = 0; i < obj.Size(); i++) {
     auto prediction = obj[i];
     int query = prediction["query"].GetInt();

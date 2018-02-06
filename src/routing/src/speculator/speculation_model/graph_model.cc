@@ -50,32 +50,32 @@ std::unique_ptr<model::Operand> CreateQueryArgumentOperand(const rjson::Value &o
   int query_id = obj["query"].GetInt();
   int query_index = obj["index"].GetInt();
   int arg = obj["arg"].GetInt();
-  return new std::unique_ptr<model::Operand>(
-    model::QueryArgumentOperand(query_id, query_index, arg));
+  return std::unique_ptr<model::Operand>(
+    new model::QueryArgumentOperand(query_id, query_index, arg));
 }
 
 std::unique_ptr<model::Operand> CreateArgumentListOperand(const rjson::Value &obj) {
   int query_id = obj["query"].GetInt();
   int query_index = obj["index"].GetInt();
   int arg = obj["arg"].GetInt();
-  return new std::unique_ptr<model::Operand>(
-    model::ArgumentListOperand(query_id, query_index, arg));
+  return std::unique_ptr<model::Operand>(
+    new model::ArgumentListOperand(query_id, query_index, arg));
 }
 
 std::unique_ptr<model::Operand> CreateColumnListOperand(const rjson::Value &obj) {
   int query_id = obj["query"].GetInt();
   int query_index = obj["index"].GetInt();
   int column = obj["column"].GetInt();
-  return new std::unique_ptr<model::Operand>(
-    model::ColumnListOperand(query_id, query_index, column));
+  return std::unique_ptr<model::Operand>(
+    new model::ColumnListOperand(query_id, query_index, column));
 }
 
 std::unique_ptr<model::Operand> CreateOperand(const rjson::Value &obj) {
   assert(obj.IsObject());
   auto type = obj["type"].GetString();
   if (type == "const") {
-    return new std::unique_ptr<model::Operand>(
-      model::ConstOperand(GetValue(obj["value"])));
+    return std::unique_ptr<model::Operand>(
+      new model::ConstOperand(GetValue(obj["value"])));
   } else if (type == "result") {
     return CreateQueryResultOperand(obj);
   } else if (type == "arg") {
@@ -85,18 +85,18 @@ std::unique_ptr<model::Operand> CreateOperand(const rjson::Value &obj) {
   } else if (type == "columnlist") {
     return CreateColumnListOperand(obj);
   }
-  return new std::unique_ptr<model::Operand>(
-    model::ConstOperand(model::SqlValue()));
+  return std::unique_ptr<model::Operand>(
+    new model::ConstOperand(model::SqlValue()));
 }
 
 std::unique_ptr<model::Operation> CreateOperation(const rjson::Value &obj) {
   assert(obj.IsObject());
   if (obj["type"].GetString() == "rand") {
-    return new std::unique_ptr<model::Operation>(
-      model::RandomOperation());
+    return std::unique_ptr<model::Operation>(
+      new model::RandomOperation());
   }
-  return new std::unique_ptr<model::Operation>(
-    model::UnaryOperation(CreateOperand(obj)));
+  return std::unique_ptr<model::Operation>(
+    new model::UnaryOperation(CreateOperand(obj)));
 }
 
 std::vector<std::unique_ptr<model::Operand>> CreatePredictions(const rjson::Value &obj) {

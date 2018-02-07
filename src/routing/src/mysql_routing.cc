@@ -94,6 +94,7 @@ const size_t kSavepointResultBytes = 11;
 uint8_t kOkPacket[] = {7, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0};
 
 thread_local int speculation_index = -1;
+std::vector<long> speculation_latency;
 
 void DumpQueryStats(std::vector<std::string> &query_stats,
                     const std::string &filename) {
@@ -102,6 +103,16 @@ void DumpQueryStats(std::vector<std::string> &query_stats,
     auto stat = query_stats[i];
     outfile << stat << std::endl;
   }
+}
+
+double Mean(const std::vector<long> &latencies) {
+  double mean = 0;
+  double i = 1;
+  for (auto latency : latencies) {
+    mean += (latency - mean) / i;
+    i++;
+  }
+  return mean;
 }
 
 void DumpLatency(std::vector<std::pair<int, long>> &latencies, const std::string &latency_name) {
@@ -184,10 +195,12 @@ bool DoSpeculation(
   Speculator *speculator,
   std::vector<bool> &need_rollback,
   std::unordered_map<std::string, int> &prefetches) {
+  auto start = Now();
   prefetches.clear();
   speculator->TrySpeculate(query, 1);
   auto speculations = speculator->Speculate(query);
   if (speculations.size() == 0) {
+    speculation_latency.push_back(GetDuration(start));
     return true;
   }
   bool done = false;
@@ -244,6 +257,7 @@ bool DoSpeculation(
     prefetches[speculation] = 0;
   }
   log_debug("Speculation sent");
+  speculation_latency.push_back(GetDuration(start));
   return true;
 }
 
@@ -723,6 +737,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   DumpLatency(read_latencies, "read_process" + std::to_string(ID));
   DumpLatency(write_latencies, "write_process" + std::to_string(ID));
   log_info("%lu misses out of %lu queries", num_misses, num_queries);
+  log_info("Average speculation overhead: %f", Mean(speculation_latency));
 
   if (!handshake_done) {
     auto ip_array = in_addr_to_array(client_addr);

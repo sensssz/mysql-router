@@ -121,14 +121,14 @@ size_t NextColumnStart(const std::string &query, size_t cursor, size_t where_sta
   return cursor;
 }
 
-std::string ExtractUpdateColumns(const std::string &query) {
+std::vector<std::string> ExtractUpdateColumns(const std::string &query) {
   auto column_start = query.find(" SET ") + 5;
   auto where_start = query.find(" WHERE ");
-  std::string columns;
+  std::vector<std::string> columns;
   while (column_start != std::string::npos) {
     auto column_len = NameLen(query, column_start);
     columns.push_back(query.substr(column_start, column_len));
-    column_start = NextColumnStart(query, column_start + column_len);
+    column_start = NextColumnStart(query, column_start + column_len, where_start);
   }
   return std::move(columns);
 }
@@ -153,7 +153,7 @@ std::string Undoer::GetUndoQuery(const std::string &query) {
   log_debug("Generating undo for query %s", query.c_str());
   if (strncmp(query.c_str(), "INSERT", 6) == 0) {
     return GetInsertUndo(query);
-  } else if (strncmp(query.c_str(), "UPDATE") == 0) {
+  } else if (strncmp(query.c_str(), "UPDATE", 6) == 0) {
     return GetUpdateUndo(query);
   }
   return "";
@@ -163,7 +163,7 @@ std::string Undoer::GetInsertUndo(const std::string &query) {
   log_debug("Generating undo query for insert");
   auto table_name = ::ExtractTableName(query, "INSERT INTO ");
   auto &pkeys = kTablePkeys[table_name];
-  auto &values = ::ExtractInsertValues(query, pkeys.size());
+  auto values = ::ExtractInsertValues(query, pkeys.size());
   std::stringstream ss;
   ss << "DELETE FROM " << table_name << " WHERE " << pkeys[0] << "=" << values[0];
   for (size_t i = 1; i < pkeys.size(); i++) {
@@ -207,7 +207,7 @@ std::string Undoer::GetQueryFromUpdate(
   return ss.str() + where_clause;
 }
 
-std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result) {
+std::vector<std::string> Undoer:(std::unique_ptr<uint8_t[]> result) {
   Packet packet;
   std::vector<std::string> values;
   uint8_t *payload = result.get();
@@ -252,7 +252,7 @@ std::string Undoer::GetUpdateUndo(
   auto res = server_group_->GetResult(server);
   auto res_packet = std::unique_ptr<uint8_t[]>(new uint8_t[res.second]);
   memcpy(res_packet.get(), res.first, res.second);
-  auto values = ::ParseResults(std::move(res_packet));
+  auto values = ParseResults(std::move(res_packet));
   if (values.size() == 0) {
     return "";
   }

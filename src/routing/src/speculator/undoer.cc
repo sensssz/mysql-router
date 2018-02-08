@@ -1,7 +1,12 @@
 #include "undoer.h"
 #include "mysqlrouter/mysql_constant.h"
 #include "logger.h"
+
+#include <sstream>
+
+#include <cctype>
 #include <cstdint>
+#include <cstring>
 
 namespace {
 
@@ -15,6 +20,46 @@ struct Packet {
     return payload != nullptr && *payload == 0xfe && size < 8;
   }
 };
+
+size_t NameLen(const std::string &query, size_t start) {
+  size_t end = start;
+  while (!isspace(query[end]) && query[end] != '(') {
+    end++;
+  }
+  return end - start;
+}
+
+std::string ExtractTableName(const std::string &query, const std::string &prefix) {
+  auto table_start = prefix.size();
+  return query.substr(table_start, NameLen(query, table_start));
+}
+
+size_t ValueLen(const std::string &query, size_t start) {
+  size_t end = start;
+  while (isdigit(query[end])) {
+    end++;
+  }
+  return end - start;
+}
+
+size_t NextValueStart(const std::string &query, size_t cursor) {
+  while (!isdigit(query[cursor])) {
+    cursor++;
+  }
+  return cursor;
+}
+
+std::vector<std::string> ExtractInsertValues(const std::string &query, size_t num_values) {
+  std::vector<std::string> values;
+  auto paren_start = query.find('(');
+  auto value_start = query.find('(', paren_start) + 1;
+  for (size_t i = 0; i < num_values; i++) {
+    auto value_len = ValueLen(query, value_start);
+    values.push_back(query.substr(value_start, value_len));
+    value_start = NextValueStart(query, value_start + value_len);
+  }
+  return std::move(values);
+}
 
 uint8_t *ReadNextPacket(uint8_t *data, Packet &packet) {
   packet.payload = data + kMySQLHeaderLen;
@@ -62,6 +107,32 @@ uint8_t *GetFieldCount(uint8_t *payload, uint64_t field_count) {
   return payload;
 }
 
+size_t NextColumnStart(const std::string &query, size_t cursor, size_t where_start) {
+  while (query[cursor] != ',') {
+    if (cursor >= where_start) {
+      return std::string::npos;
+    }
+    cursor++;
+  }
+  cursor++;
+  while (isspace(query[cursor])) {
+    cursor++;
+  }
+  return cursor;
+}
+
+std::string ExtractUpdateColumns(const std::string &query) {
+  auto column_start = query.find(" SET ") + 5;
+  auto where_start = query.find(" WHERE ");
+  std::string columns;
+  while (column_start != std::string::npos) {
+    auto column_len = NameLen(query, column_start);
+    columns.push_back(query.substr(column_start, column_len));
+    column_start = NextColumnStart(query, column_start + column_len);
+  }
+  return std::move(columns);
+}
+
 } // namespace
 
 std::unordered_map<std::string, std::vector<std::string>> Undoer::kTablePkeys {
@@ -80,33 +151,27 @@ Undoer::Undoer(ServerGroup *server_group) : server_group_(server_group) {}
 
 std::string Undoer::GetUndoQuery(const std::string &query) {
   log_debug("Generating undo for query %s", query.c_str());
-  hsql::SQLParserResult result;
-  hsql::SQLParser::parse(query, &result);
-  if (!result.isValid() || result.size() == 0) {
-    return "";
+  if (strncmp(query.c_str(), "INSERT", 6) == 0) {
+    return GetInsertUndo(query);
+  } else if (strncmp(query.c_str(), "UPDATE") == 0) {
+    return GetUpdateUndo(query);
   }
-  auto stmt = result.getStatement(0);
-  switch (stmt->type()) {
-  case hsql::kStmtInsert:
-    return GetInsertUndo(reinterpret_cast<const hsql::InsertStatement *>(stmt));
-  case hsql::kStmtUpdate:
-    return GetUpdateUndo(query, reinterpret_cast<const hsql::UpdateStatement *>(stmt));
-  default:
-    return "";
-  }
+  return "";
 }
 
-std::string Undoer::GetInsertUndo(const hsql::InsertStatement *stmt) {
+std::string Undoer::GetInsertUndo(const std::string &query) {
   log_debug("Generating undo query for insert");
-  auto table_name = std::string(stmt->tableName);
-  auto &values = *(stmt->values);
+  auto table_name = ::ExtractTableName(query, "INSERT INTO ");
   auto &pkeys = kTablePkeys[table_name];
-  auto undo_query = "DELETE FROM " + table_name + " WHERE " + pkeys[0] + "=" + std::to_string(values[0]->ival);
+  auto &values = ::ExtractInsertValues(query, pkeys.size());
+  std::stringstream ss;
+  ss << "DELETE FROM " << table_name << " WHERE " << pkeys[0] << "=" << values[0];
   for (size_t i = 1; i < pkeys.size(); i++) {
     auto &key = pkeys[i];
-    auto val = std::to_string(values[i]->ival);
-    undo_query += " AND " + key + "=" + val;
+    auto &val = values[i];
+    ss << " AND " << key << "=" << val;
   }
+  auto undo_query = ss.str();
   log_debug("Undo is %s", undo_query.c_str());
   return undo_query;
 }
@@ -114,33 +179,32 @@ std::string Undoer::GetInsertUndo(const hsql::InsertStatement *stmt) {
 // Get a select or new update query from an update
 std::string Undoer::GetQueryFromUpdate(
   const std::string &query,
-  const hsql::UpdateStatement *stmt,
   const std::vector<std::string> &values) {
-  auto table_name = std::string(stmt->table->name);
-  auto updates = *(stmt->updates);
+  auto table_name = ::ExtractTableName(query, "UPDATE ");
+  auto columns = ::ExtractUpdateColumns(query);
+  std::stringstream ss;
   std::string undo_query;
   if (values.size() > 0) {
-    undo_query = "Update " + table_name + " SET " +
-                 std::string(updates[0]->column) + "=" + values[0];
+    ss << "UPDATE " << table_name << " SET " << columns[0] << "=" << values[0];
   } else {
-    undo_query = "SELECT " + std::string(updates[0]->column);
+    ss << "SELECT " << columns[0];
   }
 
-  for (size_t i = 1; i < updates.size(); i++) {
-    auto column = std::string(updates[i]->column);
+  for (size_t i = 1; i < columns.size(); i++) {
+    auto column = columns[i];
     if (values.size() > 0) {
-      undo_query += "," + std::string(column) + "=" + values[i];
+      ss << "," << column << "=" << values[i];
     } else {
-      undo_query += "," + std::string(column);
+      ss << "," << column;
     }
   }
-  undo_query += " FROM " + table_name;
-  if (stmt->where == nullptr) {
-    return undo_query;
-  }
+  ss << " FROM " << table_name;
   auto where_index = query.find(" WHERE ");
+  if (where_index == std::string::npos) {
+    return ss.str();
+  }
   auto where_clause = query.substr(where_index, query.size() - where_index);
-  return undo_query + where_clause;
+  return ss.str() + where_clause;
 }
 
 std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result) {
@@ -151,11 +215,11 @@ std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result)
   payload = ::GetFieldCount(payload, field_count);
   // The column definitions do not matter to us, so just consume them
   for (uint64_t i = 0; i < field_count; i++) {
-    payload = ReadNextPacket(payload, packet);
+    payload = ::ReadNextPacket(payload, packet);
   }
   // Consume the EOF packet
-  // payload = ReadNextPacket(payload, packet);
-  payload = ReadNextPacket(payload, packet);
+  // payload = ::ReadNextPacket(payload, packet);
+  payload = ::ReadNextPacket(payload, packet);
   if (packet.IsEof()) {
     return std::move(values);
   }
@@ -169,17 +233,15 @@ std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result)
 }
 
 std::string Undoer::GetSelectFromUpdate(
-  const std::string &query,
-  const hsql::UpdateStatement *stmt) {
+  const std::string &query) {
   std::vector<std::string> values;
-  return GetQueryFromUpdate(query, stmt, values);
+  return GetQueryFromUpdate(query, values);
 }
 
 std::string Undoer::GetUpdateUndo(
-  const std::string &query,
-  const hsql::UpdateStatement *stmt) {
+  const std::string &query) {
   log_debug("Generating undo query for update");
-  auto select = GetSelectFromUpdate(query, stmt);
+  auto select = GetSelectFromUpdate(query);
   log_debug("Select for update is %s", select.c_str());
   int server = server_group_->GetAvailableServer();
   if (!server_group_->SendQuery(server, select)) {
@@ -190,11 +252,11 @@ std::string Undoer::GetUpdateUndo(
   auto res = server_group_->GetResult(server);
   auto res_packet = std::unique_ptr<uint8_t[]>(new uint8_t[res.second]);
   memcpy(res_packet.get(), res.first, res.second);
-  auto values = ParseResults(std::move(res_packet));
+  auto values = ::ParseResults(std::move(res_packet));
   if (values.size() == 0) {
     return "";
   }
-  auto undo = GetQueryFromUpdate(query, stmt, values);
+  auto undo = GetQueryFromUpdate(query, values);
   log_debug("New update for the update is %s", undo.c_str());
   return undo;
 }

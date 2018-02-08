@@ -52,7 +52,7 @@ size_t NextValueStart(const std::string &query, size_t cursor) {
 std::vector<std::string> ExtractInsertValues(const std::string &query, size_t num_values) {
   std::vector<std::string> values;
   auto paren_start = query.find('(');
-  auto value_start = query.find('(', paren_start) + 1;
+  auto value_start = query.find('(', paren_start + 1) + 1;
   for (size_t i = 0; i < num_values; i++) {
     auto value_len = ValueLen(query, value_start);
     values.push_back(query.substr(value_start, value_len));
@@ -165,11 +165,11 @@ std::string Undoer::GetInsertUndo(const std::string &query) {
   auto &pkeys = kTablePkeys[table_name];
   auto values = ::ExtractInsertValues(query, pkeys.size());
   std::stringstream ss;
-  ss << "DELETE FROM " << table_name << " WHERE " << pkeys[0] << "=" << values[0];
+  ss << "DELETE FROM " << table_name << " WHERE " << pkeys[0] << '=' << values[0];
   for (size_t i = 1; i < pkeys.size(); i++) {
     auto &key = pkeys[i];
     auto &val = values[i];
-    ss << " AND " << key << "=" << val;
+    ss << " AND " << key << '=' << val;
   }
   auto undo_query = ss.str();
   log_debug("Undo is %s", undo_query.c_str());
@@ -183,9 +183,8 @@ std::string Undoer::GetQueryFromUpdate(
   auto table_name = ::ExtractTableName(query, "UPDATE ");
   auto columns = ::ExtractUpdateColumns(query);
   std::stringstream ss;
-  std::string undo_query;
   if (values.size() > 0) {
-    ss << "UPDATE " << table_name << " SET " << columns[0] << "=" << values[0];
+    ss << "UPDATE " << table_name << " SET " << columns[0] << '=' << values[0];
   } else {
     ss << "SELECT " << columns[0];
   }
@@ -193,9 +192,9 @@ std::string Undoer::GetQueryFromUpdate(
   for (size_t i = 1; i < columns.size(); i++) {
     auto column = columns[i];
     if (values.size() > 0) {
-      ss << "," << column << "=" << values[i];
+      ss << ',' << column << '=' << values[i];
     } else {
-      ss << "," << column;
+      ss << ',' << column;
     }
   }
   ss << " FROM " << table_name;

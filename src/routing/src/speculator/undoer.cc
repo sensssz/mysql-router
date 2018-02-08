@@ -239,7 +239,7 @@ std::string Undoer::GetSelectFromUpdate(
 
 std::string Undoer::GetUpdateUndo(
   const std::string &query) {
-  log_debug("Generating undo query for update");
+  log_debug("Generating undo query for update %s", query.c_str());
   auto select = GetSelectFromUpdate(query);
   log_debug("Select for update is %s", select.c_str());
   int server = server_group_->GetAvailableServer();

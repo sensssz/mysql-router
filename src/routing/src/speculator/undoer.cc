@@ -207,7 +207,7 @@ std::string Undoer::GetQueryFromUpdate(
   return ss.str() + where_clause;
 }
 
-std::vector<std::string> Undoer:(std::unique_ptr<uint8_t[]> result) {
+std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result) {
   Packet packet;
   std::vector<std::string> values;
   uint8_t *payload = result.get();

@@ -36,14 +36,14 @@ std::string ExtractTableName(const std::string &query, const std::string &prefix
 
 size_t ValueLen(const std::string &query, size_t start) {
   size_t end = start;
-  while (isdigit(query[end])) {
+  while (query[end] != ',') {
     end++;
   }
   return end - start;
 }
 
 size_t NextValueStart(const std::string &query, size_t cursor) {
-  while (!isdigit(query[cursor])) {
+  while (query[cursor] == ',' || isspace(query[cursor])) {
     cursor++;
   }
   return cursor;
@@ -135,16 +135,32 @@ std::vector<std::string> ExtractUpdateColumns(const std::string &query) {
 
 } // namespace
 
+// std::unordered_map<std::string, std::vector<std::string>> Undoer::kTablePkeys {
+//   {"ITEM", {"i_id", "i_u_id"}},
+//   {"ITEM_ATTRIBUTE", {"ia_id", "ia_i_id", "ia_u_id"}},
+//   {"ITEM_BID", {"ib_id", "ib_i_id", "ib_u_id"}},
+//   {"ITEM_COMMENT", {"ic_id", "ic_i_id", "ic_u_id"}},
+//   {"ITEM_IMAGE", {"ii_id", "ii_i_id", "ii_u_id"}},
+//   {"ITEM_MAX_BID", {"imb_i_id", "imb_u_id"}},
+//   {"ITEM_PURCHASE", {"ip_id", "ip_ib_id", "ip_ib_i_id", "ip_ib_u_id"}},
+//   {"USERACCT_FEEDBACK", {"uf_u_id", "uf_i_id", "uf_i_u_id", "uf_from_id"}},
+//   {"USERACCT_ITEM", {"ui_u_id", "ui_i_id", "ui_i_u_id"}},
+// };
+
 std::unordered_map<std::string, std::vector<std::string>> Undoer::kTablePkeys {
-  {"ITEM", {"i_id", "i_u_id"}},
-  {"ITEM_ATTRIBUTE", {"ia_id", "ia_i_id", "ia_u_id"}},
-  {"ITEM_BID", {"ib_id", "ib_i_id", "ib_u_id"}},
-  {"ITEM_COMMENT", {"ic_id", "ic_i_id", "ic_u_id"}},
-  {"ITEM_IMAGE", {"ii_id", "ii_i_id", "ii_u_id"}},
-  {"ITEM_MAX_BID", {"imb_i_id", "imb_u_id"}},
-  {"ITEM_PURCHASE", {"ip_id", "ip_ib_id", "ip_ib_i_id", "ip_ib_u_id"}},
-  {"USERACCT_FEEDBACK", {"uf_u_id", "uf_i_id", "uf_i_u_id", "uf_from_id"}},
-  {"USERACCT_ITEM", {"ui_u_id", "ui_i_id", "ui_i_u_id"}},
+  {"comments", {"id"}},
+  {"hats", {"id"}},
+  {"hidden_stories", {"id"}},
+  {"invitation_requests", {"id"}},
+  {"invitations", {"id"}},
+  {"keystores", {"key"}},
+  {"moderations", {"id"}},
+  {"schema_migrations", {"version"}},
+  {"stories", {"id"}},
+  {"tag_filters", {"id"}},
+  {"taggings", {"id"}},
+  {"users", {"id"}},
+  {"votes", {"id"}}
 };
 
 Undoer::Undoer(ServerGroup *server_group) : server_group_(server_group) {}
@@ -216,8 +232,6 @@ std::vector<std::string> Undoer::ParseResults(std::unique_ptr<uint8_t[]> result)
   for (uint64_t i = 0; i < field_count; i++) {
     payload = ::ReadNextPacket(payload, packet);
   }
-  // Consume the EOF packet
-  // payload = ::ReadNextPacket(payload, packet);
   payload = ::ReadNextPacket(payload, packet);
   if (packet.IsEof()) {
     return std::move(values);

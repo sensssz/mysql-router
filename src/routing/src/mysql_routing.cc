@@ -589,7 +589,7 @@ void MySQLRouting::routing_select_thread(int client, const sockaddr_storage& cli
   if (server_group.get() == nullptr) {
     return;
   }
-  speculator_.reset(new LogSpeculator(Undoer(server_group.get()), "/users/POTaDOS/SQP/trace/auctionmark.sql"));
+  speculator_.reset(new LogSpeculator(Undoer(server_group.get()), "/users/POTaDOS/SQP/trace/lobsters.sql"));
 
   std::cerr << "Initiate authentication" << std::endl;
   if (!server_group->Authenticate(&client_connection)) {

@@ -54,7 +54,7 @@ std::vector<std::string> ExtractInsertColumns(const std::string &query) {
   auto column_start = query.find('(');
   auto column_end = query.find(')');
   while (column_start < column_end) {
-    auto column_len = TokenLen(query, column_start);
+    auto column_len = TokenLen(query, column_start, column_end);
     values.push_back(query.substr(column_start, column_len));
     column_start = NextTokenStart(query, column_start + column_len);
   }
@@ -67,7 +67,7 @@ std::vector<std::string> ExtractInsertValues(const std::string &query) {
   auto value_start = query.find('(', paren_start + 1) + 1;
   auto value_end = query.find(')', value_start);
   while (value_start < value_end) {
-    auto value_len = TokenLen(query, value_start);
+    auto value_len = TokenLen(query, value_start, value_end);
     values.push_back(query.substr(value_start, value_len));
     value_start = NextTokenStart(query, value_start + value_len);
   }

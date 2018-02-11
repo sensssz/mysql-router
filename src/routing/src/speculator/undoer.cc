@@ -34,29 +34,42 @@ std::string ExtractTableName(const std::string &query, const std::string &prefix
   return query.substr(table_start, NameLen(query, table_start));
 }
 
-size_t ValueLen(const std::string &query, size_t start) {
+size_t TokenLen(const std::string &query, size_t start, size_t tokens_end) {
   size_t end = start;
-  while (query[end] != ',') {
+  while (end < tokens_end && query[end] != ',') {
     end++;
   }
   return end - start;
 }
 
-size_t NextValueStart(const std::string &query, size_t cursor) {
+size_t NextTokenStart(const std::string &query, size_t cursor) {
   while (query[cursor] == ',' || isspace(query[cursor])) {
     cursor++;
   }
   return cursor;
 }
 
-std::vector<std::string> ExtractInsertValues(const std::string &query, size_t num_values) {
+std::vector<std::string> ExtractInsertColumns(const std::string &query) {
+  std::vector<std::string> values;
+  auto column_start = query.find('(');
+  auto column_end = query.find(')');
+  while (column_start < column_end) {
+    auto column_len = TokenLen(query, column_start);
+    values.push_back(query.substr(column_start, column_len));
+    column_start = NextTokenStart(query, column_start + column_len);
+  }
+  return std::move(values);
+}
+
+std::vector<std::string> ExtractInsertValues(const std::string &query) {
   std::vector<std::string> values;
   auto paren_start = query.find('(');
   auto value_start = query.find('(', paren_start + 1) + 1;
-  for (size_t i = 0; i < num_values; i++) {
-    auto value_len = ValueLen(query, value_start);
+  auto value_end = query.find(')', value_start);
+  while (value_start < value_end) {
+    auto value_len = TokenLen(query, value_start);
     values.push_back(query.substr(value_start, value_len));
-    value_start = NextValueStart(query, value_start + value_len);
+    value_start = NextTokenStart(query, value_start + value_len);
   }
   return std::move(values);
 }
@@ -135,34 +148,6 @@ std::vector<std::string> ExtractUpdateColumns(const std::string &query) {
 
 } // namespace
 
-// std::unordered_map<std::string, std::vector<std::string>> Undoer::kTablePkeys {
-//   {"ITEM", {"i_id", "i_u_id"}},
-//   {"ITEM_ATTRIBUTE", {"ia_id", "ia_i_id", "ia_u_id"}},
-//   {"ITEM_BID", {"ib_id", "ib_i_id", "ib_u_id"}},
-//   {"ITEM_COMMENT", {"ic_id", "ic_i_id", "ic_u_id"}},
-//   {"ITEM_IMAGE", {"ii_id", "ii_i_id", "ii_u_id"}},
-//   {"ITEM_MAX_BID", {"imb_i_id", "imb_u_id"}},
-//   {"ITEM_PURCHASE", {"ip_id", "ip_ib_id", "ip_ib_i_id", "ip_ib_u_id"}},
-//   {"USERACCT_FEEDBACK", {"uf_u_id", "uf_i_id", "uf_i_u_id", "uf_from_id"}},
-//   {"USERACCT_ITEM", {"ui_u_id", "ui_i_id", "ui_i_u_id"}},
-// };
-
-std::unordered_map<std::string, std::vector<std::string>> Undoer::kTablePkeys {
-  {"comments", {"id"}},
-  {"hats", {"id"}},
-  {"hidden_stories", {"id"}},
-  {"invitation_requests", {"id"}},
-  {"invitations", {"id"}},
-  {"keystores", {"key"}},
-  {"moderations", {"id"}},
-  {"schema_migrations", {"version"}},
-  {"stories", {"id"}},
-  {"tag_filters", {"id"}},
-  {"taggings", {"id"}},
-  {"users", {"id"}},
-  {"votes", {"id"}}
-};
-
 Undoer::Undoer(ServerGroup *server_group) : server_group_(server_group) {}
 
 std::string Undoer::GetUndoQuery(const std::string &query) {
@@ -178,14 +163,14 @@ std::string Undoer::GetUndoQuery(const std::string &query) {
 std::string Undoer::GetInsertUndo(const std::string &query) {
   log_debug("Generating undo query for insert");
   auto table_name = ::ExtractTableName(query, "INSERT INTO ");
-  auto &pkeys = kTablePkeys[table_name];
-  auto values = ::ExtractInsertValues(query, pkeys.size());
+  auto columns = ::ExtractInsertColumns(query);
+  auto values = ::ExtractInsertValues(query);
   std::stringstream ss;
-  ss << "DELETE FROM " << table_name << " WHERE " << pkeys[0] << '=' << values[0];
-  for (size_t i = 1; i < pkeys.size(); i++) {
-    auto &key = pkeys[i];
+  ss << "DELETE FROM " << table_name << " WHERE " << columns[0] << '=' << values[0];
+  for (size_t i = 1; i < columns.size(); i++) {
+    auto &column = columns[i];
     auto &val = values[i];
-    ss << " AND " << key << '=' << val;
+    ss << " AND " << column << '=' << val;
   }
   auto undo_query = ss.str();
   log_debug("Undo is %s", undo_query.c_str());

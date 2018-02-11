@@ -163,7 +163,8 @@ std::string Undoer::GetUndoQuery(const std::string &query) {
 std::string Undoer::GetInsertUndo(const std::string &query) {
   log_debug("Generating undo query for insert");
   if (query.find("ON DUPLICATE") != std::string::npos) {
-    return "UPDATE keystores SET value = value - 1 WHERE key = 'thread_id'";
+    auto values = ::ExtractInsertValues(query);
+    return "UPDATE keystores SET value = value - 1 WHERE key = " + values[0] + ";
   }
   auto table_name = ::ExtractTableName(query, "INSERT INTO ");
   auto columns = ::ExtractInsertColumns(query);
